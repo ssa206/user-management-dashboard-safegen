@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 
-// GET all users
+// GET all users with pagination and search
 export async function GET(request: NextRequest) {
   try {
     const session = await getSession();
@@ -10,10 +10,68 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const search = searchParams.get('search') || '';
+    const offset = (page - 1) * limit;
+
     const db = getDb();
-    const result = await db.query('SELECT * FROM users ORDER BY id ASC');
     
-    return NextResponse.json({ users: result.rows });
+    // Get column names to build search query
+    const columnsResult = await db.query(`
+      SELECT column_name, data_type
+      FROM information_schema.columns 
+      WHERE table_name = 'users'
+      ORDER BY ordinal_position
+    `);
+    
+    const columns = columnsResult.rows.map(row => row.column_name);
+    
+    // Build search condition
+    let searchCondition = '';
+    let searchParams_arr: any[] = [];
+    
+    if (search) {
+      const searchConditions = columns.map((col, idx) => {
+        const colType = columnsResult.rows[idx].data_type;
+        // Only search text-based columns
+        if (['character varying', 'text', 'character'].includes(colType)) {
+          return `${col}::text ILIKE $${searchParams_arr.length + 1}`;
+        }
+        return null;
+      }).filter(Boolean);
+      
+      if (searchConditions.length > 0) {
+        searchCondition = 'WHERE ' + searchConditions.join(' OR ');
+        searchParams_arr = Array(searchConditions.length).fill(`%${search}%`);
+      }
+    }
+    
+    // Get total count
+    const countQuery = `SELECT COUNT(*) FROM users ${searchCondition}`;
+    const countResult = await db.query(countQuery, searchParams_arr);
+    const totalCount = parseInt(countResult.rows[0].count);
+    
+    // Get paginated results
+    const dataQuery = `
+      SELECT * FROM users 
+      ${searchCondition}
+      ORDER BY id ASC 
+      LIMIT $${searchParams_arr.length + 1} 
+      OFFSET $${searchParams_arr.length + 2}
+    `;
+    const result = await db.query(dataQuery, [...searchParams_arr, limit, offset]);
+    
+    return NextResponse.json({ 
+      users: result.rows,
+      pagination: {
+        page,
+        limit,
+        totalCount,
+        totalPages: Math.ceil(totalCount / limit)
+      }
+    });
   } catch (error: any) {
     console.error('Error fetching users:', error);
     return NextResponse.json(
