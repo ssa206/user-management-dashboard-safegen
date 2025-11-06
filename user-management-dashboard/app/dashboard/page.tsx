@@ -167,15 +167,20 @@ export default function DashboardPage() {
     } else {
       columns = schema.map(col => col.column_name);
     }
-    // Filter out JWT columns
-    return columns.filter(col => !col.toLowerCase().includes('jwt') && !col.toLowerCase().includes('token'));
+    // Filter out JWT, token, and theme columns
+    return columns.filter(col => 
+      !col.toLowerCase().includes('jwt') && 
+      !col.toLowerCase().includes('token') &&
+      !col.toLowerCase().includes('theme')
+    );
   };
 
   const getEditableColumns = () => {
     return schema.filter(col => 
       col.column_name !== 'id' && 
       !col.column_name.toLowerCase().includes('jwt') && 
-      !col.column_name.toLowerCase().includes('token')
+      !col.column_name.toLowerCase().includes('token') &&
+      !col.column_name.toLowerCase().includes('theme')
     ).map(col => col.column_name);
   };
 
@@ -342,19 +347,27 @@ export default function DashboardPage() {
 
         <div className="border-2 border-black overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full table-fixed">
+            <table className="w-full">
               <thead className="bg-black text-white">
                 <tr>
-                  {getColumns().map((column) => (
-                    <th 
-                      key={column} 
-                      className="px-4 py-4 text-left text-sm font-bold uppercase tracking-wider"
-                      style={{ width: column === 'id' ? '80px' : 'auto' }}
-                    >
-                      {column}
-                    </th>
-                  ))}
-                  <th className="px-4 py-4 text-left text-sm font-bold uppercase tracking-wider w-48">
+                  {getColumns().map((column) => {
+                    let width = 'auto';
+                    if (column === 'id') width = '200px';
+                    else if (column.toLowerCase() === 'name') width = '180px';
+                    else if (column.toLowerCase() === 'email') width = '250px';
+                    else if (column.toLowerCase().includes('created') || column.toLowerCase().includes('date')) width = '220px';
+                    
+                    return (
+                      <th 
+                        key={column} 
+                        className="px-4 py-4 text-left text-sm font-bold uppercase tracking-wider"
+                        style={{ minWidth: width }}
+                      >
+                        {column}
+                      </th>
+                    );
+                  })}
+                  <th className="px-4 py-4 text-left text-sm font-bold uppercase tracking-wider" style={{ minWidth: '180px' }}>
                     Actions
                   </th>
                 </tr>

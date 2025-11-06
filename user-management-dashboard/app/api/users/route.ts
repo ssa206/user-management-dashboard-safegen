@@ -30,38 +30,46 @@ export async function GET(request: NextRequest) {
     
     // Build search condition
     let searchCondition = '';
-    let searchParams_arr: any[] = [];
+    let countParams: any[] = [];
+    let dataParams: any[] = [];
     
     if (search) {
-      const searchConditions = columns.map((col, idx) => {
-        const colType = columnsResult.rows[idx].data_type;
+      const searchValue = `%${search}%`;
+      const searchConditions: string[] = [];
+      let paramIndex = 1;
+      
+      columnsResult.rows.forEach((row) => {
+        const colType = row.data_type;
+        const colName = row.column_name;
         // Only search text-based columns
         if (['character varying', 'text', 'character'].includes(colType)) {
-          return `${col}::text ILIKE $${searchParams_arr.length + 1}`;
+          searchConditions.push(`${colName}::text ILIKE $${paramIndex}`);
+          countParams.push(searchValue);
+          dataParams.push(searchValue);
+          paramIndex++;
         }
-        return null;
-      }).filter(Boolean);
+      });
       
       if (searchConditions.length > 0) {
         searchCondition = 'WHERE ' + searchConditions.join(' OR ');
-        searchParams_arr = Array(searchConditions.length).fill(`%${search}%`);
       }
     }
     
     // Get total count
     const countQuery = `SELECT COUNT(*) FROM users ${searchCondition}`;
-    const countResult = await db.query(countQuery, searchParams_arr);
+    const countResult = await db.query(countQuery, countParams);
     const totalCount = parseInt(countResult.rows[0].count);
     
     // Get paginated results
+    const limitOffset = [limit, offset];
     const dataQuery = `
       SELECT * FROM users 
       ${searchCondition}
       ORDER BY id ASC 
-      LIMIT $${searchParams_arr.length + 1} 
-      OFFSET $${searchParams_arr.length + 2}
+      LIMIT $${dataParams.length + 1} 
+      OFFSET $${dataParams.length + 2}
     `;
-    const result = await db.query(dataQuery, [...searchParams_arr, limit, offset]);
+    const result = await db.query(dataQuery, [...dataParams, ...limitOffset]);
     
     return NextResponse.json({ 
       users: result.rows,
