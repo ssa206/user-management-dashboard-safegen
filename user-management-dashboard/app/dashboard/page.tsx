@@ -323,7 +323,7 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="border-b-4 border-black bg-white sticky top-0 z-10 shadow-sm">
         <div className="px-8 py-6 flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-black">User Management Dashboard</h1>
+          <h1 className="text-3xl font-bold text-black">SafeGenerations User Management</h1>
           <button
             onClick={handleLogout}
             disabled={loggingOut}

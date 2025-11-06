@@ -41,12 +41,12 @@ export default function LoginPage() {
       <div className="w-full max-w-md p-8 space-y-8">
         <div className="text-center">
           <h1 className="text-4xl font-bold text-black mb-2">
-            User Management
+            SafeGenerations User Management
           </h1>
           <p className="text-gray-600">Sign in to access the dashboard</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+        <form onSubmit={handleSubmit} className="mt-8 space-y-6" autoComplete="on">
           <div className="space-y-4">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-black mb-2">
@@ -57,10 +57,11 @@ export default function LoginPage() {
                 name="email"
                 type="email"
                 required
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-4 py-3 border-2 border-black text-black bg-white focus:outline-none focus:ring-2 focus:ring-black rounded-lg"
-                placeholder="Enter your email address"
+                placeholder="admin@safegenerations.org"
               />
             </div>
 
@@ -73,6 +74,7 @@ export default function LoginPage() {
                 name="password"
                 type="password"
                 required
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full px-4 py-3 border-2 border-black text-black bg-white focus:outline-none focus:ring-2 focus:ring-black rounded-lg"
