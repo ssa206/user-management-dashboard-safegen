@@ -397,7 +397,7 @@ export default function DatabaseExplorerPage() {
   );
 }
 
-// Relationship Graph View Component
+// Relationship Graph View Component - Mind Map Style
 function RelationshipGraphView({ 
   data, 
   onBack 
@@ -408,111 +408,214 @@ function RelationshipGraphView({
   const mainRecord = data.mainRecord;
   const relatedRecords = data.relatedRecords;
   
+  // Pan and Zoom state
+  const [scale, setScale] = useState(1);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  
   // Calculate total related records
   const totalRelated = Object.values(relatedRecords).reduce((sum, records) => sum + records.length, 0);
+
+  // Flatten all related records with their table names
+  const allRelatedNodes: Array<{ table: string; record: any; tableIdx: number; recordIdx: number }> = [];
+  Object.entries(relatedRecords).forEach(([tableName, records], tableIdx) => {
+    records.forEach((record, recordIdx) => {
+      allRelatedNodes.push({ table: tableName, record, tableIdx, recordIdx });
+    });
+  });
+
+  // Calculate positions in a circular mind map layout
+  const centerX = 600; // Center X position
+  const centerY = 400; // Center Y position
+  const radius = 350; // Distance from center
+
+  // Handle mouse wheel for zoom
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    const delta = e.deltaY * -0.001;
+    const newScale = Math.min(Math.max(0.5, scale + delta), 3);
+    setScale(newScale);
+  };
+
+  // Handle mouse down to start dragging
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
+  };
+
+  // Handle mouse move while dragging
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isDragging) {
+      setPosition({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y
+      });
+    }
+  };
+
+  // Handle mouse up to stop dragging
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  // Reset view
+  const resetView = () => {
+    setScale(1);
+    setPosition({ x: 0, y: 0 });
+  };
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <button
-          onClick={onBack}
-          className="px-6 py-3 border-2 border-black text-black bg-white font-bold hover:bg-gray-100 transition-colors rounded-xl"
-        >
-          ← Back to List
-        </button>
-        <div className="text-sm font-bold text-gray-600">
-          {totalRelated} related record{totalRelated !== 1 ? 's' : ''} found
+        <div className="flex gap-4 items-center">
+          <button
+            onClick={onBack}
+            className="px-6 py-3 border-2 border-black text-black bg-white font-bold hover:bg-gray-100 transition-colors rounded-xl"
+          >
+            ← Back to List
+          </button>
+          <button
+            onClick={resetView}
+            className="px-6 py-3 border-2 border-black text-black bg-white font-bold hover:bg-gray-100 transition-colors rounded-xl"
+            title="Reset zoom and position"
+          >
+            Reset View
+          </button>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="text-sm font-bold text-gray-600 bg-white border-2 border-black px-4 py-2 rounded-xl">
+            Zoom: {Math.round(scale * 100)}%
+          </div>
+          <div className="text-sm font-bold text-gray-600">
+            {totalRelated} related record{totalRelated !== 1 ? 's' : ''} found
+          </div>
         </div>
       </div>
 
-      {/* Graph Container */}
-      <div className="border-4 border-black rounded-2xl bg-gray-50 p-12 min-h-[600px]">
-        <div className="flex items-center justify-center">
-          <div className="relative" style={{ width: '100%', maxWidth: '1200px' }}>
-            
-            {/* Center Node - Main Record */}
-            <div className="flex justify-center mb-20">
-              <div className="relative z-10">
-                <div className="bg-black text-white border-4 border-black rounded-2xl p-6 shadow-2xl min-w-[300px]">
-                  <div className="text-center mb-4">
-                    <div className="text-3xl mb-2">🎯</div>
-                    <div className="text-xl font-bold uppercase">{mainRecord.table}</div>
-                    <div className="text-xs opacity-75 mt-1">Main Record</div>
+      {/* Mind Map Container */}
+      <div 
+        className="border-4 border-black rounded-2xl bg-gray-50 overflow-hidden relative"
+        style={{ height: '800px', cursor: isDragging ? 'grabbing' : 'grab' }}
+        onWheel={handleWheel}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+      >
+        <div 
+          className="absolute"
+          style={{ 
+            minWidth: '1200px', 
+            minHeight: '800px', 
+            width: '1200px', 
+            height: '800px',
+            transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
+            transformOrigin: '0 0',
+            transition: isDragging ? 'none' : 'transform 0.1s ease-out'
+          }}
+        >
+          
+          {/* SVG for connection lines */}
+          <svg className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%' }}>
+            {allRelatedNodes.map((node, idx) => {
+              const angle = (idx / allRelatedNodes.length) * 2 * Math.PI - Math.PI / 2;
+              const x = centerX + Math.cos(angle) * radius;
+              const y = centerY + Math.sin(angle) * radius;
+              
+              return (
+                <line
+                  key={idx}
+                  x1={centerX}
+                  y1={centerY}
+                  x2={x}
+                  y2={y}
+                  stroke="black"
+                  strokeWidth="2"
+                  strokeDasharray="5,5"
+                />
+              );
+            })}
+          </svg>
+
+          {/* Center Node - Main Record */}
+          <div 
+            className="absolute transform -translate-x-1/2 -translate-y-1/2 z-10"
+            style={{ 
+              left: `${centerX}px`, 
+              top: `${centerY}px`,
+            }}
+          >
+            <div className="bg-black text-white border-4 border-black rounded-2xl p-6 shadow-2xl w-[280px]">
+              <div className="text-center mb-4">
+                <div className="text-xl font-bold uppercase">{mainRecord.table}</div>
+                <div className="text-xs opacity-75 mt-1">Main Record</div>
+              </div>
+              <div className="space-y-2 border-t-2 border-white pt-4">
+                {Object.entries(mainRecord.data).slice(0, 4).map(([key, value]) => (
+                  <div key={key} className="text-xs">
+                    <div className="font-bold opacity-75 uppercase">{key}:</div>
+                    <div className="truncate">
+                      {value !== null && value !== undefined ? String(value) : '-'}
+                    </div>
                   </div>
-                  <div className="space-y-2 border-t-2 border-white pt-4">
-                    {Object.entries(mainRecord.data).slice(0, 5).map(([key, value]) => (
-                      <div key={key} className="flex justify-between text-sm">
-                        <span className="font-bold opacity-75">{key}:</span>
-                        <span className="truncate ml-2 max-w-[150px]">
-                          {value !== null && value !== undefined ? String(value) : '-'}
-                        </span>
-                      </div>
-                    ))}
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Related Record Nodes - Positioned in Circle */}
+          {allRelatedNodes.map((node, idx) => {
+            const angle = (idx / allRelatedNodes.length) * 2 * Math.PI - Math.PI / 2;
+            const x = centerX + Math.cos(angle) * radius;
+            const y = centerY + Math.sin(angle) * radius;
+            
+            return (
+              <div
+                key={`${node.table}-${idx}`}
+                className="absolute transform -translate-x-1/2 -translate-y-1/2 z-20"
+                style={{ 
+                  left: `${x}px`, 
+                  top: `${y}px`,
+                }}
+              >
+                <div className="bg-white border-4 border-black rounded-xl p-4 hover:shadow-xl transition-all hover:scale-105 w-[220px]">
+                  <div className="mb-3 pb-3 border-b-2 border-gray-200">
+                    <div className="text-xs font-bold text-gray-500 uppercase text-center">
+                      {node.table}
+                    </div>
+                    <div className="text-xs text-center text-gray-400 mt-1">
+                      ID: {node.record.id}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {Object.entries(node.record)
+                      .filter(([key]) => key !== 'id')
+                      .slice(0, 3)
+                      .map(([key, value]) => (
+                        <div key={key} className="text-xs">
+                          <div className="font-bold text-gray-600 uppercase">{key}:</div>
+                          <div className="text-black truncate">
+                            {value !== null && value !== undefined 
+                              ? String(value).substring(0, 30) 
+                              : '-'}
+                          </div>
+                        </div>
+                      ))}
                   </div>
                 </div>
               </div>
-            </div>
+            );
+          })}
 
-            {/* Related Records Nodes */}
-            {Object.entries(relatedRecords).map(([tableName, records], tableIdx) => {
-              if (records.length === 0) return null;
-              
-              const angle = (tableIdx / Object.keys(relatedRecords).length) * 2 * Math.PI;
-              const isLeft = Math.cos(angle) < 0;
-              
-              return (
-                <div key={tableName} className="mb-16">
-                  {/* Table Header */}
-                  <div className="mb-6 text-center">
-                    <div className="inline-block bg-white border-2 border-black rounded-xl px-6 py-3">
-                      <h3 className="text-lg font-bold uppercase">{tableName}</h3>
-                      <p className="text-xs text-gray-600">{records.length} record{records.length !== 1 ? 's' : ''}</p>
-                    </div>
-                  </div>
-
-                  {/* Records Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {records.map((record, idx) => (
-                      <div key={idx} className="relative">
-                        {/* Connection Line */}
-                        <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-full h-12 w-0.5 bg-black"></div>
-                        
-                        {/* Record Node */}
-                        <div className="bg-white border-4 border-black rounded-xl p-4 hover:shadow-xl transition-shadow">
-                          <div className="text-center mb-3">
-                            <div className="text-2xl mb-1">📄</div>
-                            <div className="text-xs font-bold text-gray-500">
-                              ID: {record.id}
-                            </div>
-                          </div>
-                          <div className="space-y-2 border-t-2 border-gray-200 pt-3">
-                            {Object.entries(record)
-                              .filter(([key]) => key !== 'id')
-                              .slice(0, 4)
-                              .map(([key, value]) => (
-                                <div key={key} className="text-xs">
-                                  <div className="font-bold text-gray-600 uppercase">{key}:</div>
-                                  <div className="text-black truncate">
-                                    {value !== null && value !== undefined 
-                                      ? String(value).substring(0, 40) 
-                                      : '-'}
-                                  </div>
-                                </div>
-                              ))}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-
-            {/* No relationships message */}
-            {totalRelated === 0 && (
+          {/* No relationships message */}
+          {totalRelated === 0 && (
+            <div 
+              className="absolute transform -translate-x-1/2 -translate-y-1/2"
+              style={{ left: '50%', top: '50%' }}
+            >
               <div className="text-center py-12">
-                <div className="text-6xl mb-4">🔍</div>
                 <p className="text-xl font-bold text-gray-600">
                   No related records found
                 </p>
@@ -520,8 +623,14 @@ function RelationshipGraphView({
                   This record has no foreign key relationships
                 </p>
               </div>
-            )}
-          </div>
+            </div>
+          )}
+        </div>
+        
+        {/* Instructions */}
+        <div className="absolute bottom-4 left-4 bg-white border-2 border-black rounded-xl px-4 py-3 text-xs font-bold pointer-events-none">
+          <div>Drag to pan</div>
+          <div>Scroll to zoom</div>
         </div>
       </div>
 
@@ -588,14 +697,13 @@ function GraphView({
                 }`}
               >
                 <div className="text-center">
-                  <div className="text-2xl mb-2">🗄️</div>
-                  <div className="font-bold capitalize">{table.table_name}</div>
+                  <div className="font-bold capitalize mb-2">{table.table_name}</div>
                   <div className={`text-xs mt-2 ${isSelected ? 'text-gray-300' : 'text-gray-500'}`}>
                     {table.column_count} columns
                   </div>
                   {relatedTables.size > 0 && (
                     <div className={`text-xs mt-1 ${isSelected ? 'text-gray-300' : 'text-gray-500'}`}>
-                      ↔ {relatedTables.size} connected
+                      {relatedTables.size} connected
                     </div>
                   )}
                 </div>
