@@ -35,6 +35,7 @@ export default function DashboardPage() {
   const [sortBy, setSortBy] = useState('id');
   const [sortOrder, setSortOrder] = useState<'ASC' | 'DESC'>('ASC');
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; user: User | null }>({ show: false, user: null });
+  const [loggingOut, setLoggingOut] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -101,8 +102,12 @@ export default function DashboardPage() {
   };
 
   const handleLogout = async () => {
+    setLoggingOut(true);
     await fetch('/api/auth/logout', { method: 'POST' });
-    router.push('/login');
+    // Wait a moment for the animation to show
+    setTimeout(() => {
+      router.push('/login');
+    }, 800);
   };
 
   const handleDelete = async (user: User) => {
@@ -302,15 +307,29 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-white">
+      {/* Logout Animation Overlay */}
+      {loggingOut && (
+        <div className="fixed inset-0 bg-white z-50 flex items-center justify-center animate-fade-in">
+          <div className="text-center">
+            <div className="mb-6 inline-block">
+              <div className="w-16 h-16 border-4 border-black border-t-transparent rounded-full animate-spin"></div>
+            </div>
+            <h2 className="text-2xl font-bold text-black mb-2">Logging out...</h2>
+            <p className="text-gray-600">See you soon!</p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="border-b-4 border-black bg-white sticky top-0 z-10 shadow-sm">
         <div className="px-8 py-6 flex justify-between items-center">
           <h1 className="text-3xl font-bold text-black">User Management Dashboard</h1>
           <button
             onClick={handleLogout}
-            className="px-8 py-3 bg-black text-white font-bold hover:bg-gray-800 transition-colors rounded-xl"
+            disabled={loggingOut}
+            className="px-8 py-3 bg-black text-white font-bold hover:bg-gray-800 transition-colors rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Logout
+            {loggingOut ? 'Logging out...' : 'Logout'}
           </button>
         </div>
       </div>
