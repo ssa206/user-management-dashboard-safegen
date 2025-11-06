@@ -271,73 +271,85 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-8 pb-4 border-b-2 border-black">
-          <h1 className="text-4xl font-bold text-black">User Management Dashboard</h1>
+    <div className="min-h-screen bg-white">
+      {/* Header */}
+      <div className="border-b-4 border-black bg-white sticky top-0 z-10 shadow-sm">
+        <div className="px-8 py-6 flex justify-between items-center">
+          <h1 className="text-3xl font-bold text-black">User Management Dashboard</h1>
           <button
             onClick={handleLogout}
-            className="px-6 py-2 bg-black text-white font-medium hover:bg-gray-800 transition-colors"
+            className="px-8 py-3 bg-black text-white font-bold hover:bg-gray-800 transition-colors"
           >
             Logout
           </button>
         </div>
+      </div>
 
+      <div className="px-8 py-6">
         {error && (
-          <div className="mb-4 p-4 border-2 border-black bg-gray-100 text-black">
+          <div className="mb-6 p-4 border-2 border-black bg-gray-100 text-black">
             {error}
           </div>
         )}
 
-        <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-          <button
-            onClick={handleAdd}
-            className="px-6 py-3 bg-black text-white font-medium hover:bg-gray-800 transition-colors"
-          >
-            + Add New User
-          </button>
-          
-          <div className="flex-1 max-w-md">
-            <input
-              type="text"
-              placeholder="Search users..."
-              value={searchQuery}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className="w-full px-4 py-3 border-2 border-black text-black bg-white focus:outline-none focus:ring-2 focus:ring-black"
-            />
+        {/* Controls Bar */}
+        <div className="mb-6 bg-gray-50 border-2 border-black p-6">
+          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+            <button
+              onClick={handleAdd}
+              className="px-8 py-3 bg-black text-white font-bold hover:bg-gray-800 transition-colors shadow-md"
+            >
+              + Add New User
+            </button>
+            
+            <div className="flex-1 lg:max-w-xl w-full">
+              <input
+                type="text"
+                placeholder="Search by name, email, or any field..."
+                value={searchQuery}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="w-full px-6 py-3 border-2 border-black text-black bg-white focus:outline-none focus:ring-4 focus:ring-gray-300 font-medium"
+              />
+            </div>
+
+            {pagination.totalCount > 0 && (
+              <div className="text-sm font-bold text-black bg-white px-6 py-3 border-2 border-black">
+                {pagination.totalCount} Total Users
+              </div>
+            )}
           </div>
         </div>
 
         {(editingUser || showAddForm) && (
-          <div className="mb-8 p-6 border-2 border-black bg-white">
-            <h2 className="text-2xl font-bold text-black mb-4">
+          <div className="mb-8 p-8 border-4 border-black bg-gray-50 shadow-lg">
+            <h2 className="text-3xl font-bold text-black mb-6 pb-4 border-b-2 border-black">
               {editingUser ? 'Edit User' : 'Add New User'}
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {getEditableColumns().map((column) => (
                 <div key={column}>
-                  <label className="block text-sm font-medium text-black mb-2">
-                    {column}
+                  <label className="block text-sm font-bold text-black mb-2 uppercase tracking-wide">
+                    {column.replace(/_/g, ' ')}
                   </label>
                   <input
                     type="text"
                     value={formData[column] || ''}
                     onChange={(e) => setFormData({ ...formData, [column]: e.target.value })}
-                    className="w-full px-4 py-2 border-2 border-black text-black bg-white focus:outline-none focus:ring-2 focus:ring-black"
+                    className="w-full px-4 py-3 border-2 border-black text-black bg-white focus:outline-none focus:ring-4 focus:ring-gray-300"
                   />
                 </div>
               ))}
             </div>
-            <div className="mt-6 flex gap-4">
+            <div className="mt-8 flex gap-4 pt-6 border-t-2 border-black">
               <button
                 onClick={handleSave}
-                className="px-6 py-2 bg-black text-white font-medium hover:bg-gray-800 transition-colors"
+                className="px-8 py-3 bg-black text-white font-bold hover:bg-gray-800 transition-colors shadow-md"
               >
-                Save
+                {editingUser ? 'Update User' : 'Create User'}
               </button>
               <button
                 onClick={handleCancel}
-                className="px-6 py-2 border-2 border-black text-black bg-white font-medium hover:bg-gray-100 transition-colors"
+                className="px-8 py-3 border-2 border-black text-black bg-white font-bold hover:bg-gray-100 transition-colors"
               >
                 Cancel
               </button>
@@ -345,7 +357,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <div className="border-2 border-black overflow-hidden">
+        <div className="border-4 border-black overflow-hidden shadow-lg bg-white">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-black text-white">
@@ -360,21 +372,21 @@ export default function DashboardPage() {
                     return (
                       <th 
                         key={column} 
-                        className="px-4 py-4 text-left text-sm font-bold uppercase tracking-wider"
+                        className="px-6 py-5 text-left text-xs font-bold uppercase tracking-wider"
                         style={{ minWidth: width }}
                       >
-                        {column}
+                        {column.replace(/_/g, ' ')}
                       </th>
                     );
                   })}
-                  <th className="px-4 py-4 text-left text-sm font-bold uppercase tracking-wider" style={{ minWidth: '180px' }}>
+                  <th className="px-6 py-5 text-center text-xs font-bold uppercase tracking-wider" style={{ minWidth: '200px' }}>
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white">
+              <tbody className="bg-white divide-y-2 divide-gray-200">
                 {users.map((user, index) => (
-                  <tr key={user.id || index} className="border-t-2 border-black hover:bg-gray-50">
+                  <tr key={user.id || index} className="hover:bg-gray-50 transition-colors">
                     {getColumns().map((column) => {
                       const rawValue = user[column];
                       const value = rawValue !== null && rawValue !== undefined 
@@ -387,23 +399,23 @@ export default function DashboardPage() {
                       const isDate = isDateColumn(column);
                       
                       return (
-                        <td key={column} className="px-4 py-4 text-sm text-black">
+                        <td key={column} className="px-6 py-5 text-sm text-black">
                           <div className="flex flex-col gap-1">
                             <div className="flex items-start gap-2">
-                              <div className="break-words flex-1">
+                              <div className="break-words flex-1 font-medium">
                                 {displayText}
                               </div>
                               {showMoreButton && (
                                 <button
                                   onClick={() => toggleCellExpansion(user.id, column)}
-                                  className="text-gray-500 hover:text-black text-xs font-medium whitespace-nowrap flex-shrink-0"
+                                  className="text-gray-500 hover:text-black text-xs font-bold whitespace-nowrap flex-shrink-0 px-2 py-1 border border-gray-300 hover:border-black transition-colors"
                                 >
-                                  {isExpanded ? '↑ Less' : '↓ More'}
+                                  {isExpanded ? '↑' : '↓'}
                                 </button>
                               )}
                             </div>
                             {isDate && value !== '-' && (
-                              <div className="text-xs text-gray-500 mt-1">
+                              <div className="text-xs text-gray-500 font-medium">
                                 {getRelativeTime(value)}
                               </div>
                             )}
@@ -411,17 +423,17 @@ export default function DashboardPage() {
                         </td>
                       );
                     })}
-                    <td className="px-4 py-4 text-sm">
-                      <div className="flex gap-2">
+                    <td className="px-6 py-5 text-sm">
+                      <div className="flex gap-3 justify-center">
                         <button
                           onClick={() => handleEdit(user)}
-                          className="px-4 py-1 bg-black text-white font-medium hover:bg-gray-800 transition-colors text-xs"
+                          className="px-6 py-2 bg-black text-white font-bold hover:bg-gray-800 transition-colors"
                         >
                           Edit
                         </button>
                         <button
                           onClick={() => handleDelete(user.id)}
-                          className="px-4 py-1 border-2 border-black text-black bg-white font-medium hover:bg-gray-100 transition-colors text-xs"
+                          className="px-6 py-2 border-2 border-black text-black bg-white font-bold hover:bg-gray-100 transition-colors"
                         >
                           Delete
                         </button>
@@ -434,91 +446,103 @@ export default function DashboardPage() {
           </div>
           
           {users.length === 0 && !loading && (
-            <div className="text-center py-12 text-gray-600">
-              {searchQuery ? 'No users found matching your search.' : 'No users found. Click "Add New User" to create one.'}
+            <div className="text-center py-16 text-gray-600 border-t-4 border-black bg-gray-50">
+              <div className="text-xl font-bold mb-2">
+                {searchQuery ? '🔍 No users found' : '📋 No users yet'}
+              </div>
+              <div className="text-sm">
+                {searchQuery ? 'Try adjusting your search terms.' : 'Click "Add New User" to create your first user.'}
+              </div>
             </div>
           )}
         </div>
 
         {/* Pagination Controls */}
         {pagination.totalPages > 0 && (
-          <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-2 border-black bg-white">
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-black">
-                Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.totalCount)} of {pagination.totalCount} users
-              </span>
-              
-              <select
-                value={pagination.limit}
-                onChange={(e) => handleLimitChange(Number(e.target.value))}
-                className="px-3 py-2 border-2 border-black text-black bg-white focus:outline-none focus:ring-2 focus:ring-black"
-              >
-                <option value="5">5 per page</option>
-                <option value="10">10 per page</option>
-                <option value="25">25 per page</option>
-                <option value="50">50 per page</option>
-              </select>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => handlePageChange(1)}
-                disabled={pagination.page === 1}
-                className="px-3 py-2 border-2 border-black text-black bg-white font-medium hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                ««
-              </button>
-              <button
-                onClick={() => handlePageChange(pagination.page - 1)}
-                disabled={pagination.page === 1}
-                className="px-3 py-2 border-2 border-black text-black bg-white font-medium hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                « Prev
-              </button>
-              
-              <div className="flex gap-1">
-                {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                  let pageNum;
-                  if (pagination.totalPages <= 5) {
-                    pageNum = i + 1;
-                  } else if (pagination.page <= 3) {
-                    pageNum = i + 1;
-                  } else if (pagination.page >= pagination.totalPages - 2) {
-                    pageNum = pagination.totalPages - 4 + i;
-                  } else {
-                    pageNum = pagination.page - 2 + i;
-                  }
-                  
-                  return (
-                    <button
-                      key={pageNum}
-                      onClick={() => handlePageChange(pageNum)}
-                      className={`px-3 py-2 border-2 border-black font-medium transition-colors ${
-                        pagination.page === pageNum
-                          ? 'bg-black text-white'
-                          : 'bg-white text-black hover:bg-gray-100'
-                      }`}
-                    >
-                      {pageNum}
-                    </button>
-                  );
-                })}
+          <div className="mt-8 bg-white border-4 border-black shadow-lg">
+            <div className="p-6 flex flex-col lg:flex-row items-center justify-between gap-6">
+              <div className="flex flex-col sm:flex-row items-center gap-6">
+                <span className="text-sm font-bold text-black bg-gray-50 px-6 py-3 border-2 border-black">
+                  Page {pagination.page} of {pagination.totalPages}
+                </span>
+                
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-medium text-gray-600">Rows per page:</span>
+                  <select
+                    value={pagination.limit}
+                    onChange={(e) => handleLimitChange(Number(e.target.value))}
+                    className="px-4 py-2 border-2 border-black text-black bg-white focus:outline-none focus:ring-4 focus:ring-gray-300 font-bold"
+                  >
+                    <option value="5">5</option>
+                    <option value="10">10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                  </select>
+                </div>
               </div>
               
-              <button
-                onClick={() => handlePageChange(pagination.page + 1)}
-                disabled={pagination.page === pagination.totalPages}
-                className="px-3 py-2 border-2 border-black text-black bg-white font-medium hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Next »
-              </button>
-              <button
-                onClick={() => handlePageChange(pagination.totalPages)}
-                disabled={pagination.page === pagination.totalPages}
-                className="px-3 py-2 border-2 border-black text-black bg-white font-medium hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                »»
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handlePageChange(1)}
+                  disabled={pagination.page === 1}
+                  className="px-4 py-2 border-2 border-black text-black bg-white font-bold hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  title="First page"
+                >
+                  ««
+                </button>
+                <button
+                  onClick={() => handlePageChange(pagination.page - 1)}
+                  disabled={pagination.page === 1}
+                  className="px-5 py-2 border-2 border-black text-black bg-white font-bold hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                
+                <div className="flex gap-2 mx-2">
+                  {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (pagination.totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (pagination.page <= 3) {
+                      pageNum = i + 1;
+                    } else if (pagination.page >= pagination.totalPages - 2) {
+                      pageNum = pagination.totalPages - 4 + i;
+                    } else {
+                      pageNum = pagination.page - 2 + i;
+                    }
+                    
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => handlePageChange(pageNum)}
+                        className={`px-4 py-2 border-2 border-black font-bold transition-colors ${
+                          pagination.page === pageNum
+                            ? 'bg-black text-white shadow-md'
+                            : 'bg-white text-black hover:bg-gray-100'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                <button
+                  onClick={() => handlePageChange(pagination.page + 1)}
+                  disabled={pagination.page === pagination.totalPages}
+                  className="px-5 py-2 border-2 border-black text-black bg-white font-bold hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+                <button
+                  onClick={() => handlePageChange(pagination.totalPages)}
+                  disabled={pagination.page === pagination.totalPages}
+                  className="px-4 py-2 border-2 border-black text-black bg-white font-bold hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  title="Last page"
+                >
+                  »»
+                </button>
+              </div>
             </div>
           </div>
         )}
