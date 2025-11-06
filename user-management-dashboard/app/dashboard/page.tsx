@@ -278,7 +278,7 @@ export default function DashboardPage() {
           <h1 className="text-3xl font-bold text-black">User Management Dashboard</h1>
           <button
             onClick={handleLogout}
-            className="px-8 py-3 bg-black text-white font-bold hover:bg-gray-800 transition-colors"
+            className="px-8 py-3 bg-black text-white font-bold hover:bg-gray-800 transition-colors rounded-xl"
           >
             Logout
           </button>
@@ -287,17 +287,17 @@ export default function DashboardPage() {
 
       <div className="px-8 py-6">
         {error && (
-          <div className="mb-6 p-4 border-2 border-black bg-gray-100 text-black">
+          <div className="mb-6 p-4 border-2 border-black bg-gray-100 text-black rounded-xl">
             {error}
           </div>
         )}
 
         {/* Controls Bar */}
-        <div className="mb-6 bg-gray-50 border-2 border-black p-6">
+        <div className="mb-6 bg-gray-50 border-2 border-black p-6 rounded-2xl">
           <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
             <button
               onClick={handleAdd}
-              className="px-8 py-3 bg-black text-white font-bold hover:bg-gray-800 transition-colors shadow-md"
+              className="px-8 py-3 bg-black text-white font-bold hover:bg-gray-800 transition-colors shadow-md rounded-xl"
             >
               + Add New User
             </button>
@@ -308,12 +308,12 @@ export default function DashboardPage() {
                 placeholder="Search by name, email, or any field..."
                 value={searchQuery}
                 onChange={(e) => handleSearchChange(e.target.value)}
-                className="w-full px-6 py-3 border-2 border-black text-black bg-white focus:outline-none focus:ring-4 focus:ring-gray-300 font-medium"
+                className="w-full px-6 py-3 border-2 border-black text-black bg-white focus:outline-none focus:ring-4 focus:ring-gray-300 font-medium rounded-xl"
               />
             </div>
 
             {pagination.totalCount > 0 && (
-              <div className="text-sm font-bold text-black bg-white px-6 py-3 border-2 border-black">
+              <div className="text-sm font-bold text-black bg-white px-6 py-3 border-2 border-black rounded-xl">
                 {pagination.totalCount} Total Users
               </div>
             )}
@@ -321,7 +321,7 @@ export default function DashboardPage() {
         </div>
 
         {(editingUser || showAddForm) && (
-          <div className="mb-8 p-8 border-4 border-black bg-gray-50 shadow-lg">
+          <div className="mb-8 p-8 border-4 border-black bg-gray-50 shadow-lg rounded-2xl">
             <h2 className="text-3xl font-bold text-black mb-6 pb-4 border-b-2 border-black">
               {editingUser ? 'Edit User' : 'Add New User'}
             </h2>
@@ -335,7 +335,7 @@ export default function DashboardPage() {
                     type="text"
                     value={formData[column] || ''}
                     onChange={(e) => setFormData({ ...formData, [column]: e.target.value })}
-                    className="w-full px-4 py-3 border-2 border-black text-black bg-white focus:outline-none focus:ring-4 focus:ring-gray-300"
+                    className="w-full px-4 py-3 border-2 border-black text-black bg-white focus:outline-none focus:ring-4 focus:ring-gray-300 rounded-lg"
                   />
                 </div>
               ))}
@@ -343,13 +343,13 @@ export default function DashboardPage() {
             <div className="mt-8 flex gap-4 pt-6 border-t-2 border-black">
               <button
                 onClick={handleSave}
-                className="px-8 py-3 bg-black text-white font-bold hover:bg-gray-800 transition-colors shadow-md"
+                className="px-8 py-3 bg-black text-white font-bold hover:bg-gray-800 transition-colors shadow-md rounded-xl"
               >
                 {editingUser ? 'Update User' : 'Create User'}
               </button>
               <button
                 onClick={handleCancel}
-                className="px-8 py-3 border-2 border-black text-black bg-white font-bold hover:bg-gray-100 transition-colors"
+                className="px-8 py-3 border-2 border-black text-black bg-white font-bold hover:bg-gray-100 transition-colors rounded-xl"
               >
                 Cancel
               </button>
@@ -357,7 +357,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <div className="border-4 border-black overflow-hidden shadow-lg bg-white">
+        <div className="border-4 border-black overflow-hidden shadow-lg bg-white rounded-2xl">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-black text-white">
@@ -408,7 +408,7 @@ export default function DashboardPage() {
                               {showMoreButton && (
                                 <button
                                   onClick={() => toggleCellExpansion(user.id, column)}
-                                  className="text-gray-500 hover:text-black text-xs font-bold whitespace-nowrap flex-shrink-0 px-2 py-1 border border-gray-300 hover:border-black transition-colors"
+                                  className="text-gray-500 hover:text-black text-xs font-bold whitespace-nowrap flex-shrink-0 px-2 py-1 border border-gray-300 hover:border-black transition-colors rounded-md"
                                 >
                                   {isExpanded ? '↑' : '↓'}
                                 </button>
@@ -427,13 +427,13 @@ export default function DashboardPage() {
                       <div className="flex gap-3 justify-center">
                         <button
                           onClick={() => handleEdit(user)}
-                          className="px-6 py-2 bg-black text-white font-bold hover:bg-gray-800 transition-colors"
+                          className="px-6 py-2 bg-black text-white font-bold hover:bg-gray-800 transition-colors rounded-lg"
                         >
                           Edit
                         </button>
                         <button
                           onClick={() => handleDelete(user.id)}
-                          className="px-6 py-2 border-2 border-black text-black bg-white font-bold hover:bg-gray-100 transition-colors"
+                          className="px-6 py-2 border-2 border-black text-black bg-white font-bold hover:bg-gray-100 transition-colors rounded-lg"
                         >
                           Delete
                         </button>
@@ -459,10 +459,10 @@ export default function DashboardPage() {
 
         {/* Pagination Controls */}
         {pagination.totalPages > 0 && (
-          <div className="mt-8 bg-white border-4 border-black shadow-lg">
+          <div className="mt-8 bg-white border-4 border-black shadow-lg rounded-2xl">
             <div className="p-6 flex flex-col lg:flex-row items-center justify-between gap-6">
               <div className="flex flex-col sm:flex-row items-center gap-6">
-                <span className="text-sm font-bold text-black bg-gray-50 px-6 py-3 border-2 border-black">
+                <span className="text-sm font-bold text-black bg-gray-50 px-6 py-3 border-2 border-black rounded-xl">
                   Page {pagination.page} of {pagination.totalPages}
                 </span>
                 
@@ -471,7 +471,7 @@ export default function DashboardPage() {
                   <select
                     value={pagination.limit}
                     onChange={(e) => handleLimitChange(Number(e.target.value))}
-                    className="px-4 py-2 border-2 border-black text-black bg-white focus:outline-none focus:ring-4 focus:ring-gray-300 font-bold"
+                    className="px-4 py-2 border-2 border-black text-black bg-white focus:outline-none focus:ring-4 focus:ring-gray-300 font-bold rounded-lg"
                   >
                     <option value="5">5</option>
                     <option value="10">10</option>
@@ -485,7 +485,7 @@ export default function DashboardPage() {
                 <button
                   onClick={() => handlePageChange(1)}
                   disabled={pagination.page === 1}
-                  className="px-4 py-2 border-2 border-black text-black bg-white font-bold hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="px-4 py-2 border-2 border-black text-black bg-white font-bold hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed rounded-lg"
                   title="First page"
                 >
                   ««
@@ -493,7 +493,7 @@ export default function DashboardPage() {
                 <button
                   onClick={() => handlePageChange(pagination.page - 1)}
                   disabled={pagination.page === 1}
-                  className="px-5 py-2 border-2 border-black text-black bg-white font-bold hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="px-5 py-2 border-2 border-black text-black bg-white font-bold hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed rounded-lg"
                 >
                   Previous
                 </button>
@@ -515,7 +515,7 @@ export default function DashboardPage() {
                       <button
                         key={pageNum}
                         onClick={() => handlePageChange(pageNum)}
-                        className={`px-4 py-2 border-2 border-black font-bold transition-colors ${
+                        className={`px-4 py-2 border-2 border-black font-bold transition-colors rounded-lg ${
                           pagination.page === pageNum
                             ? 'bg-black text-white shadow-md'
                             : 'bg-white text-black hover:bg-gray-100'
@@ -530,14 +530,14 @@ export default function DashboardPage() {
                 <button
                   onClick={() => handlePageChange(pagination.page + 1)}
                   disabled={pagination.page === pagination.totalPages}
-                  className="px-5 py-2 border-2 border-black text-black bg-white font-bold hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="px-5 py-2 border-2 border-black text-black bg-white font-bold hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed rounded-lg"
                 >
                   Next
                 </button>
                 <button
                   onClick={() => handlePageChange(pagination.totalPages)}
                   disabled={pagination.page === pagination.totalPages}
-                  className="px-4 py-2 border-2 border-black text-black bg-white font-bold hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="px-4 py-2 border-2 border-black text-black bg-white font-bold hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed rounded-lg"
                   title="Last page"
                 >
                   »»

@@ -59,7 +59,7 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-black text-black bg-white focus:outline-none focus:ring-2 focus:ring-black"
+                className="w-full px-4 py-3 border-2 border-black text-black bg-white focus:outline-none focus:ring-2 focus:ring-black rounded-lg"
                 placeholder="admin@safegenerations.org"
               />
             </div>
@@ -75,14 +75,14 @@ export default function LoginPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-black text-black bg-white focus:outline-none focus:ring-2 focus:ring-black"
+                className="w-full px-4 py-3 border-2 border-black text-black bg-white focus:outline-none focus:ring-2 focus:ring-black rounded-lg"
                 placeholder="••••••••"
               />
             </div>
           </div>
 
           {error && (
-            <div className="p-3 border-2 border-black bg-gray-100 text-black text-sm">
+            <div className="p-3 border-2 border-black bg-gray-100 text-black text-sm rounded-lg">
               {error}
             </div>
           )}
@@ -90,7 +90,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 px-4 bg-black text-white font-medium hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full py-3 px-4 bg-black text-white font-bold hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-xl"
           >
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
