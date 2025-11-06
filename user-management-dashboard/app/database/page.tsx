@@ -191,13 +191,15 @@ export default function DatabaseExplorerPage() {
       >
         <div className="sticky top-0 h-screen flex flex-col">
           {/* Sidebar Header */}
-          <div className="p-4 border-b-4 border-black bg-white flex items-center justify-between">
-            <h2 className={`font-bold text-black ${sidebarOpen ? 'text-xl' : 'text-xs'}`}>
-              {sidebarOpen ? 'Tables' : 'T'}
-            </h2>
+          <div className={`border-b-4 border-black bg-white flex items-center ${sidebarOpen ? 'p-4 justify-between' : 'p-2 justify-center'}`}>
+            {sidebarOpen && (
+              <h2 className="font-bold text-black text-xl">
+                Tables
+              </h2>
+            )}
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors font-bold text-lg"
               title={sidebarOpen ? 'Collapse' : 'Expand'}
             >
               {sidebarOpen ? '←' : '→'}
@@ -205,7 +207,7 @@ export default function DatabaseExplorerPage() {
           </div>
 
           {/* Table List */}
-          <div className="flex-1 overflow-y-auto p-4">
+          <div className={`flex-1 overflow-y-auto ${sidebarOpen ? 'p-4' : 'p-2'}`}>
             {tables.map((table) => {
               const rels = getTableRelationships(table.table_name);
               const isSelected = selectedTable === table.table_name;
@@ -213,8 +215,15 @@ export default function DatabaseExplorerPage() {
               return (
                 <button
                   key={table.table_name}
-                  onClick={() => setSelectedTable(table.table_name)}
-                  className={`w-full text-left mb-2 p-3 border-2 border-black rounded-lg transition-all ${
+                  onClick={() => {
+                    setSelectedTable(table.table_name);
+                    setView('list');
+                    setSelectedRow(null);
+                    setRelationshipData(null);
+                  }}
+                  className={`w-full text-left mb-2 border-2 border-black rounded-lg transition-all ${
+                    sidebarOpen ? 'p-3' : 'p-2'
+                  } ${
                     isSelected 
                       ? 'bg-black text-white' 
                       : 'bg-white text-black hover:bg-gray-100'
@@ -232,7 +241,7 @@ export default function DatabaseExplorerPage() {
                       </div>
                     </div>
                   ) : (
-                    <div className="text-center text-xs font-bold">
+                    <div className="text-center text-[10px] font-bold">
                       {table.table_name.substring(0, 2).toUpperCase()}
                     </div>
                   )}
@@ -242,12 +251,21 @@ export default function DatabaseExplorerPage() {
           </div>
 
           {/* Sidebar Footer */}
-          <div className="p-4 border-t-4 border-black bg-white">
+          <div className={`border-t-4 border-black bg-white space-y-3 ${sidebarOpen ? 'p-4' : 'p-2'}`}>
+            <button
+              onClick={() => router.push('/dashboard')}
+              className={`w-full border-2 border-black text-black bg-white font-bold hover:bg-gray-100 transition-colors rounded-xl ${
+                sidebarOpen ? 'px-4 py-3' : 'px-2 py-2 text-lg'
+              }`}
+              title="Go to Dashboard"
+            >
+              {sidebarOpen ? '← Dashboard' : '🏠'}
+            </button>
             <button
               onClick={handleLogout}
               disabled={loggingOut}
-              className={`w-full px-4 py-3 bg-black text-white font-bold hover:bg-gray-800 transition-colors rounded-xl disabled:opacity-50 ${
-                sidebarOpen ? '' : 'text-xs'
+              className={`w-full bg-black text-white font-bold hover:bg-gray-800 transition-colors rounded-xl disabled:opacity-50 ${
+                sidebarOpen ? 'px-4 py-3' : 'px-2 py-2 text-lg'
               }`}
             >
               {sidebarOpen ? (loggingOut ? 'Logging out...' : 'Logout') : '⏻'}
