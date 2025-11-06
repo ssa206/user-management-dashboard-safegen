@@ -260,7 +260,7 @@ export default function DatabaseExplorerPage() {
               }`}
               title="Go to Dashboard"
             >
-              {sidebarOpen ? '← Dashboard' : '🏠'}
+              {sidebarOpen ? '← Dashboard' : 'H'}
             </button>
             <button
               onClick={handleLogout}
