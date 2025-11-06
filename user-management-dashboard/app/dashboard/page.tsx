@@ -324,13 +324,21 @@ export default function DashboardPage() {
       <div className="border-b-4 border-black bg-white sticky top-0 z-10 shadow-sm">
         <div className="px-8 py-6 flex justify-between items-center">
           <h1 className="text-3xl font-bold text-black">SafeGenerations User Management</h1>
-          <button
-            onClick={handleLogout}
-            disabled={loggingOut}
-            className="px-8 py-3 bg-black text-white font-bold hover:bg-gray-800 transition-colors rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loggingOut ? 'Logging out...' : 'Logout'}
-          </button>
+          <div className="flex gap-4 items-center">
+            <button
+              onClick={() => router.push('/database')}
+              className="px-8 py-3 border-2 border-black text-black bg-white font-bold hover:bg-gray-100 transition-colors rounded-xl"
+            >
+              🗄️ Database Explorer
+            </button>
+            <button
+              onClick={handleLogout}
+              disabled={loggingOut}
+              className="px-8 py-3 bg-black text-white font-bold hover:bg-gray-800 transition-colors rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loggingOut ? 'Logging out...' : 'Logout'}
+            </button>
+          </div>
         </div>
       </div>
 
