@@ -414,6 +414,12 @@ function RelationshipGraphView({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   
+  // Selected node state
+  const [selectedNode, setSelectedNode] = useState<{ type: 'main' | 'related'; data: any; table: string } | null>(null);
+  
+  // Hover state for z-index management
+  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+  
   // Calculate total related records
   const totalRelated = Object.values(relatedRecords).reduce((sum, records) => sum + records.length, 0);
 
@@ -504,135 +510,213 @@ function RelationshipGraphView({
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
       >
-        <div 
-          className="absolute"
-          style={{ 
-            minWidth: '1200px', 
-            minHeight: '800px', 
-            width: '1200px', 
-            height: '800px',
-            transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
-            transformOrigin: '0 0',
-            transition: isDragging ? 'none' : 'transform 0.1s ease-out'
-          }}
-        >
-          
-          {/* SVG for connection lines */}
-          <svg className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%' }}>
+          <div 
+            className="absolute"
+            style={{ 
+              minWidth: '1200px', 
+              minHeight: '800px', 
+              width: '1200px', 
+              height: '800px',
+              transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
+              transformOrigin: '0 0',
+              transition: isDragging ? 'none' : 'transform 0.1s ease-out'
+            }}
+          >
+            
+            {/* SVG for connection lines */}
+            <svg className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%' }}>
+              {allRelatedNodes.map((node, idx) => {
+                const angle = (idx / allRelatedNodes.length) * 2 * Math.PI - Math.PI / 2;
+                const x = centerX + Math.cos(angle) * radius;
+                const y = centerY + Math.sin(angle) * radius;
+                
+                return (
+                  <line
+                    key={idx}
+                    x1={centerX}
+                    y1={centerY}
+                    x2={x}
+                    y2={y}
+                    stroke="black"
+                    strokeWidth="2"
+                    strokeDasharray="5,5"
+                  />
+                );
+              })}
+            </svg>
+
+            {/* Center Node - Main Record */}
+            <div 
+              className="absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer"
+              style={{ 
+                left: `${centerX}px`, 
+                top: `${centerY}px`,
+                zIndex: hoveredNodeId === 'main' ? 100 : 10,
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedNode({ type: 'main', data: mainRecord.data, table: mainRecord.table });
+              }}
+              onMouseEnter={() => setHoveredNodeId('main')}
+              onMouseLeave={() => setHoveredNodeId(null)}
+            >
+              <div className={`bg-black text-white border-4 border-black rounded-2xl p-6 shadow-2xl w-[280px] transition-all ${
+                hoveredNodeId === 'main' ? 'shadow-[0_0_30px_rgba(0,0,0,0.5)] scale-105' : ''
+              } ${selectedNode?.type === 'main' ? 'ring-4 ring-white' : ''}`}>
+                <div className="text-center mb-4">
+                  <div className="text-xl font-bold uppercase">{mainRecord.table}</div>
+                  <div className="text-xs opacity-75 mt-1">Main Record (Click for details)</div>
+                </div>
+                <div className="space-y-2 border-t-2 border-white pt-4">
+                  {Object.entries(mainRecord.data).slice(0, 4).map(([key, value]) => (
+                    <div key={key} className="text-xs">
+                      <div className="font-bold opacity-75 uppercase">{key}:</div>
+                      <div className="truncate">
+                        {value !== null && value !== undefined ? String(value) : '-'}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Related Record Nodes - Positioned in Circle */}
             {allRelatedNodes.map((node, idx) => {
               const angle = (idx / allRelatedNodes.length) * 2 * Math.PI - Math.PI / 2;
               const x = centerX + Math.cos(angle) * radius;
               const y = centerY + Math.sin(angle) * radius;
+              const nodeId = `${node.table}-${idx}`;
+              const isHovered = hoveredNodeId === nodeId;
+              const isSelected = selectedNode?.type === 'related' && 
+                                 selectedNode?.table === node.table && 
+                                 selectedNode?.data.id === node.record.id;
               
               return (
-                <line
-                  key={idx}
-                  x1={centerX}
-                  y1={centerY}
-                  x2={x}
-                  y2={y}
-                  stroke="black"
-                  strokeWidth="2"
-                  strokeDasharray="5,5"
-                />
-              );
-            })}
-          </svg>
-
-          {/* Center Node - Main Record */}
-          <div 
-            className="absolute transform -translate-x-1/2 -translate-y-1/2 z-10"
-            style={{ 
-              left: `${centerX}px`, 
-              top: `${centerY}px`,
-            }}
-          >
-            <div className="bg-black text-white border-4 border-black rounded-2xl p-6 shadow-2xl w-[280px]">
-              <div className="text-center mb-4">
-                <div className="text-xl font-bold uppercase">{mainRecord.table}</div>
-                <div className="text-xs opacity-75 mt-1">Main Record</div>
-              </div>
-              <div className="space-y-2 border-t-2 border-white pt-4">
-                {Object.entries(mainRecord.data).slice(0, 4).map(([key, value]) => (
-                  <div key={key} className="text-xs">
-                    <div className="font-bold opacity-75 uppercase">{key}:</div>
-                    <div className="truncate">
-                      {value !== null && value !== undefined ? String(value) : '-'}
+                <div
+                  key={nodeId}
+                  className="absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer"
+                  style={{ 
+                    left: `${x}px`, 
+                    top: `${y}px`,
+                    zIndex: isHovered ? 100 : 20,
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedNode({ type: 'related', data: node.record, table: node.table });
+                  }}
+                  onMouseEnter={() => setHoveredNodeId(nodeId)}
+                  onMouseLeave={() => setHoveredNodeId(null)}
+                >
+                  <div className={`bg-white border-4 border-black rounded-xl p-4 transition-all w-[220px] ${
+                    isHovered ? 'shadow-[0_0_30px_rgba(0,0,0,0.5)] scale-110' : 'shadow-lg'
+                  } ${isSelected ? 'ring-4 ring-black' : ''}`}>
+                    <div className="mb-3 pb-3 border-b-2 border-gray-200">
+                      <div className="text-xs font-bold text-gray-500 uppercase text-center">
+                        {node.table}
+                      </div>
+                      <div className="text-xs text-center text-gray-400 mt-1">
+                        ID: {node.record.id}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Related Record Nodes - Positioned in Circle */}
-          {allRelatedNodes.map((node, idx) => {
-            const angle = (idx / allRelatedNodes.length) * 2 * Math.PI - Math.PI / 2;
-            const x = centerX + Math.cos(angle) * radius;
-            const y = centerY + Math.sin(angle) * radius;
-            
-            return (
-              <div
-                key={`${node.table}-${idx}`}
-                className="absolute transform -translate-x-1/2 -translate-y-1/2 z-20"
-                style={{ 
-                  left: `${x}px`, 
-                  top: `${y}px`,
-                }}
-              >
-                <div className="bg-white border-4 border-black rounded-xl p-4 hover:shadow-xl transition-all hover:scale-105 w-[220px]">
-                  <div className="mb-3 pb-3 border-b-2 border-gray-200">
-                    <div className="text-xs font-bold text-gray-500 uppercase text-center">
-                      {node.table}
-                    </div>
-                    <div className="text-xs text-center text-gray-400 mt-1">
-                      ID: {node.record.id}
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    {Object.entries(node.record)
-                      .filter(([key]) => key !== 'id')
-                      .slice(0, 3)
-                      .map(([key, value]) => (
-                        <div key={key} className="text-xs">
-                          <div className="font-bold text-gray-600 uppercase">{key}:</div>
-                          <div className="text-black truncate">
-                            {value !== null && value !== undefined 
-                              ? String(value).substring(0, 30) 
-                              : '-'}
+                    <div className="space-y-2">
+                      {Object.entries(node.record)
+                        .filter(([key]) => key !== 'id')
+                        .slice(0, 3)
+                        .map(([key, value]) => (
+                          <div key={key} className="text-xs">
+                            <div className="font-bold text-gray-600 uppercase">{key}:</div>
+                            <div className="text-black truncate">
+                              {value !== null && value !== undefined 
+                                ? String(value).substring(0, 30) 
+                                : '-'}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                    </div>
+                    <div className="text-xs text-center text-gray-400 mt-3 pt-3 border-t-2 border-gray-200">
+                      Click for details
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
 
-          {/* No relationships message */}
-          {totalRelated === 0 && (
-            <div 
-              className="absolute transform -translate-x-1/2 -translate-y-1/2"
-              style={{ left: '50%', top: '50%' }}
-            >
-              <div className="text-center py-12">
-                <p className="text-xl font-bold text-gray-600">
-                  No related records found
-                </p>
-                <p className="text-sm text-gray-500 mt-2">
-                  This record has no foreign key relationships
-                </p>
+            {/* No relationships message */}
+            {totalRelated === 0 && (
+              <div 
+                className="absolute transform -translate-x-1/2 -translate-y-1/2"
+                style={{ left: '50%', top: '50%' }}
+              >
+                <div className="text-center py-12">
+                  <p className="text-xl font-bold text-gray-600">
+                    No related records found
+                  </p>
+                  <p className="text-sm text-gray-500 mt-2">
+                    This record has no foreign key relationships
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          {/* Instructions */}
+          <div className="absolute bottom-4 left-4 bg-white border-2 border-black rounded-xl px-4 py-3 text-xs font-bold pointer-events-none">
+            <div>Drag to pan</div>
+            <div>Scroll to zoom</div>
+          </div>
+
+          {/* Side Panel - Node Details (Inside Canvas) */}
+          {selectedNode && (
+            <div className="absolute top-4 right-4 w-96 pointer-events-auto z-50">
+              <div className="border-4 border-black rounded-2xl bg-white p-6 shadow-2xl">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xl font-bold">Node Details</h3>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedNode(null);
+                    }}
+                    className="px-3 py-1 border-2 border-black rounded-lg hover:bg-gray-100 font-bold text-sm"
+                  >
+                    ✕
+                  </button>
+                </div>
+                
+                <div className="space-y-4">
+                  {/* Node Type Badge */}
+                  <div className={`inline-block px-4 py-2 rounded-lg font-bold text-sm ${
+                    selectedNode.type === 'main' 
+                      ? 'bg-black text-white border-2 border-black' 
+                      : 'bg-white text-black border-2 border-black'
+                  }`}>
+                    {selectedNode.type === 'main' ? 'Main Record' : 'Related Record'}
+                  </div>
+
+                  {/* Table Name */}
+                  <div className="border-b-2 border-gray-200 pb-3">
+                    <div className="text-xs font-bold text-gray-500 uppercase mb-1">Table</div>
+                    <div className="text-lg font-bold capitalize">{selectedNode.table}</div>
+                  </div>
+
+                  {/* All Fields */}
+                  <div className="space-y-3 max-h-[500px] overflow-y-auto">
+                    <div className="text-xs font-bold text-gray-500 uppercase mb-2">All Fields</div>
+                    {Object.entries(selectedNode.data).map(([key, value]) => (
+                      <div key={key} className="p-3 bg-gray-50 border-2 border-gray-200 rounded-lg">
+                        <div className="text-xs font-bold text-gray-600 uppercase mb-1">{key}</div>
+                        <div className="text-sm text-black break-words">
+                          {value !== null && value !== undefined 
+                            ? String(value)
+                            : <span className="text-gray-400 italic">null</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           )}
         </div>
-        
-        {/* Instructions */}
-        <div className="absolute bottom-4 left-4 bg-white border-2 border-black rounded-xl px-4 py-3 text-xs font-bold pointer-events-none">
-          <div>Drag to pan</div>
-          <div>Scroll to zoom</div>
-        </div>
-      </div>
 
       {/* Relationship Details */}
       {data.relationships.length > 0 && (
