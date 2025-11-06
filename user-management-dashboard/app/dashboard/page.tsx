@@ -34,6 +34,7 @@ export default function DashboardPage() {
   const [expandedCells, setExpandedCells] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState('id');
   const [sortOrder, setSortOrder] = useState<'ASC' | 'DESC'>('ASC');
+  const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; user: User | null }>({ show: false, user: null });
   const router = useRouter();
 
   useEffect(() => {
@@ -104,21 +105,32 @@ export default function DashboardPage() {
     router.push('/login');
   };
 
-  const handleDelete = async (id: any) => {
-    if (!confirm('Are you sure you want to delete this user?')) return;
+  const handleDelete = async (user: User) => {
+    setDeleteConfirm({ show: true, user });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm.user) return;
 
     try {
-      const response = await fetch(`/api/users/${id}`, { method: 'DELETE' });
+      const response = await fetch(`/api/users/${deleteConfirm.user.id}`, { method: 'DELETE' });
       
       if (response.ok) {
+        setDeleteConfirm({ show: false, user: null });
         fetchUsers();
       } else {
         const data = await response.json();
-        alert(data.error || 'Failed to delete user');
+        setError(data.error || 'Failed to delete user');
+        setDeleteConfirm({ show: false, user: null });
       }
     } catch (err) {
-      alert('Failed to delete user');
+      setError('Failed to delete user');
+      setDeleteConfirm({ show: false, user: null });
     }
+  };
+
+  const cancelDelete = () => {
+    setDeleteConfirm({ show: false, user: null });
   };
 
   const handleEdit = (user: User) => {
@@ -464,7 +476,7 @@ export default function DashboardPage() {
                           Edit
                         </button>
                         <button
-                          onClick={() => handleDelete(user.id)}
+                          onClick={() => handleDelete(user)}
                           className="px-6 py-2 border-2 border-black text-black bg-white font-bold hover:bg-gray-100 transition-colors rounded-lg"
                         >
                           Delete
@@ -573,6 +585,50 @@ export default function DashboardPage() {
                   title="Last page"
                 >
                   »»
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {deleteConfirm.show && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white border-4 border-black rounded-2xl shadow-2xl max-w-md w-full p-8 animate-in">
+              <div className="mb-6">
+                <h3 className="text-2xl font-bold text-black mb-3">Delete User</h3>
+                <p className="text-gray-700 mb-4">
+                  Are you sure you want to delete this user? This action cannot be undone.
+                </p>
+                {deleteConfirm.user && (
+                  <div className="bg-gray-50 border-2 border-black rounded-xl p-4 mt-4">
+                    <div className="space-y-2">
+                      {Object.entries(deleteConfirm.user).slice(0, 3).map(([key, value]) => (
+                        <div key={key} className="flex justify-between text-sm">
+                          <span className="font-bold text-gray-600 uppercase">{key}:</span>
+                          <span className="font-medium text-black truncate ml-2">
+                            {value !== null && value !== undefined ? String(value).substring(0, 30) : '-'}
+                            {value && String(value).length > 30 ? '...' : ''}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex gap-4">
+                <button
+                  onClick={confirmDelete}
+                  className="flex-1 px-6 py-3 bg-black text-white font-bold hover:bg-gray-800 transition-colors rounded-xl"
+                >
+                  Yes, Delete
+                </button>
+                <button
+                  onClick={cancelDelete}
+                  className="flex-1 px-6 py-3 border-2 border-black text-black bg-white font-bold hover:bg-gray-100 transition-colors rounded-xl"
+                >
+                  Cancel
                 </button>
               </div>
             </div>
