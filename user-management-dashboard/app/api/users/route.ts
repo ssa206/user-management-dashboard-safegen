@@ -14,6 +14,8 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
     const search = searchParams.get('search') || '';
+    const sortBy = searchParams.get('sortBy') || 'id';
+    const sortOrder = searchParams.get('sortOrder') || 'ASC';
     const offset = (page - 1) * limit;
 
     const db = getDb();
@@ -27,6 +29,9 @@ export async function GET(request: NextRequest) {
     `);
     
     const columns = columnsResult.rows.map(row => row.column_name);
+    
+    // Validate sortBy column exists to prevent SQL injection
+    const validSortBy = columns.includes(sortBy) ? sortBy : 'id';
     
     // Build search condition
     let searchCondition = '';
@@ -60,12 +65,13 @@ export async function GET(request: NextRequest) {
     const countResult = await db.query(countQuery, countParams);
     const totalCount = parseInt(countResult.rows[0].count);
     
-    // Get paginated results
+    // Get paginated results with sorting
     const limitOffset = [limit, offset];
+    const validSortOrder = sortOrder.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
     const dataQuery = `
       SELECT * FROM users 
       ${searchCondition}
-      ORDER BY id ASC 
+      ORDER BY ${validSortBy} ${validSortOrder}
       LIMIT $${dataParams.length + 1} 
       OFFSET $${dataParams.length + 2}
     `;

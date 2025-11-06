@@ -32,6 +32,8 @@ export default function DashboardPage() {
   const [pagination, setPagination] = useState<Pagination>({ page: 1, limit: 10, totalCount: 0, totalPages: 0 });
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedCells, setExpandedCells] = useState<Set<string>>(new Set());
+  const [sortBy, setSortBy] = useState('id');
+  const [sortOrder, setSortOrder] = useState<'ASC' | 'DESC'>('ASC');
   const router = useRouter();
 
   useEffect(() => {
@@ -42,7 +44,7 @@ export default function DashboardPage() {
     if (pagination.page > 0) {
       fetchUsers();
     }
-  }, [pagination.page, pagination.limit, searchQuery]);
+  }, [pagination.page, pagination.limit, searchQuery, sortBy, sortOrder]);
 
   const checkAuth = async () => {
     try {
@@ -64,7 +66,9 @@ export default function DashboardPage() {
       const params = new URLSearchParams({
         page: pagination.page.toString(),
         limit: pagination.limit.toString(),
-        search: searchQuery
+        search: searchQuery,
+        sortBy: sortBy,
+        sortOrder: sortOrder
       });
       const response = await fetch(`/api/users?${params}`);
       const data = await response.json();
@@ -180,7 +184,9 @@ export default function DashboardPage() {
       col.column_name !== 'id' && 
       !col.column_name.toLowerCase().includes('jwt') && 
       !col.column_name.toLowerCase().includes('token') &&
-      !col.column_name.toLowerCase().includes('theme')
+      !col.column_name.toLowerCase().includes('theme') &&
+      !col.column_name.toLowerCase().includes('created') &&
+      !col.column_name.toLowerCase().includes('updated')
     ).map(col => col.column_name);
   };
 
@@ -262,6 +268,18 @@ export default function DashboardPage() {
     setPagination(prev => ({ ...prev, limit: newLimit, page: 1 }));
   };
 
+  const handleSort = (column: string) => {
+    if (sortBy === column) {
+      // Toggle sort order if same column
+      setSortOrder(sortOrder === 'ASC' ? 'DESC' : 'ASC');
+    } else {
+      // New column, default to DESC for date columns, ASC for others
+      setSortBy(column);
+      setSortOrder(isDateColumn(column) ? 'DESC' : 'ASC');
+    }
+    setPagination(prev => ({ ...prev, page: 1 }));
+  };
+
   if (loading && users.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
@@ -312,11 +330,25 @@ export default function DashboardPage() {
               />
             </div>
 
-            {pagination.totalCount > 0 && (
-              <div className="text-sm font-bold text-black bg-white px-6 py-3 border-2 border-black rounded-xl">
-                {pagination.totalCount} Total Users
-              </div>
-            )}
+            <div className="flex items-center gap-3">
+              {pagination.totalCount > 0 && (
+                <div className="text-sm font-bold text-black bg-white px-6 py-3 border-2 border-black rounded-xl">
+                  {pagination.totalCount} Total Users
+                </div>
+              )}
+              
+              <button
+                onClick={() => handleSort('created_at')}
+                className={`px-6 py-3 font-bold border-2 border-black rounded-xl transition-colors ${
+                  sortBy === 'created_at' 
+                    ? 'bg-black text-white' 
+                    : 'bg-white text-black hover:bg-gray-100'
+                }`}
+                title="Sort by creation date"
+              >
+                Sort by Date {sortBy === 'created_at' && (sortOrder === 'ASC' ? '↑' : '↓')}
+              </button>
+            </div>
           </div>
         </div>
 
