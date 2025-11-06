@@ -329,7 +329,7 @@ export default function DashboardPage() {
               onClick={() => router.push('/database')}
               className="px-8 py-3 border-2 border-black text-black bg-white font-bold hover:bg-gray-100 transition-colors rounded-xl"
             >
-              🗄️ Database Explorer
+              Database Explorer
             </button>
             <button
               onClick={handleLogout}

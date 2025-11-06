@@ -16,6 +16,19 @@ export async function GET(
     const { table, id } = await params;
     const db = getDb();
 
+    // Clean up old OTPs (older than 3 days) if querying the otps table
+    if (table.toLowerCase() === 'otps') {
+      try {
+        await db.query(`
+          DELETE FROM otps 
+          WHERE created_at < NOW() - INTERVAL '3 days'
+        `);
+      } catch (error) {
+        console.error('Error cleaning up old OTPs:', error);
+        // Continue even if cleanup fails
+      }
+    }
+
     // Get the main record
     const mainRecord = await db.query(`SELECT * FROM ${table} WHERE id = $1`, [id]);
     

@@ -35,6 +35,19 @@ export async function GET(
       return NextResponse.json({ error: 'Table not found' }, { status: 404 });
     }
     
+    // Clean up old OTPs (older than 3 days) if querying the otps table
+    if (table.toLowerCase() === 'otps') {
+      try {
+        await db.query(`
+          DELETE FROM otps 
+          WHERE created_at < NOW() - INTERVAL '3 days'
+        `);
+      } catch (error) {
+        console.error('Error cleaning up old OTPs:', error);
+        // Continue even if cleanup fails
+      }
+    }
+    
     // Get column info
     const columnsResult = await db.query(`
       SELECT column_name, data_type
