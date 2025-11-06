@@ -24,7 +24,31 @@ export async function GET() {
       ORDER BY table_name
     `);
     
-    return NextResponse.json({ tables: tablesResult.rows });
+    // Get row count for each table
+    const tablesWithCounts = await Promise.all(
+      tablesResult.rows.map(async (table: any) => {
+        try {
+          const countResult = await db.query(
+            `SELECT COUNT(*) as row_count FROM "${table.table_name}"`
+          );
+          return {
+            ...table,
+            row_count: parseInt(countResult.rows[0].row_count)
+          };
+        } catch (error) {
+          // If error fetching count, return 0
+          return {
+            ...table,
+            row_count: 0
+          };
+        }
+      })
+    );
+    
+    // Filter out empty tables
+    const nonEmptyTables = tablesWithCounts.filter((table: any) => table.row_count > 0);
+    
+    return NextResponse.json({ tables: nonEmptyTables });
   } catch (error: any) {
     console.error('Error fetching tables:', error);
     return NextResponse.json(

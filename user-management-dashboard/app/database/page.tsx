@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 interface Table {
   table_name: string;
   column_count: number;
+  row_count: number;
 }
 
 interface Relationship {
@@ -236,7 +237,7 @@ export default function DatabaseExplorerPage() {
                         {table.table_name}
                       </div>
                       <div className={`text-xs mt-1 ${isSelected ? 'text-gray-300' : 'text-gray-500'}`}>
-                        {table.column_count} columns
+                        {table.row_count} rows • {table.column_count} columns
                         {rels.length > 0 && ` • ${rels.length} links`}
                       </div>
                     </div>
