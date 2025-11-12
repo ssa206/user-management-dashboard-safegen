@@ -2,10 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: 'standalone',
-  // Enable static optimization for Azure Static Web Apps
-  images: {
-    unoptimized: true,
-  },
+  // Azure Static Web Apps configuration
+  distDir: '.next',
 };
 
 export default nextConfig;
