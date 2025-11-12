@@ -36,6 +36,12 @@ jobs:
         working-directory: ./user-management-dashboard
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Prepare deployment artifacts
+        run: |
+          cp staticwebapp.config.json build/
+          if [ -d "public" ]; then cp -R public build/public; fi
+        working-directory: ./user-management-dashboard
       
       - name: Build And Deploy
         id: builddeploy
@@ -46,7 +52,7 @@ jobs:
           action: "upload"
           app_location: "/user-management-dashboard"
           api_location: ""
-          output_location: "build/standalone"
+          output_location: "build"
           skip_app_build: true
 
   close_pull_request_job:
