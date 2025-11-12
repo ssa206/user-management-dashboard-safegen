@@ -283,10 +283,10 @@ export default function DatabaseExplorerPage() {
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-4">
               <Image
-                src="/safegenerations-logo.svg"
+                src="/SafeGenerations-logo.png"
                 alt="SafeGenerations logo"
-                width={160}
-                height={90}
+                width={200}
+                height={104}
                 priority
               />
               <h1 className="text-3xl font-bold text-black capitalize">

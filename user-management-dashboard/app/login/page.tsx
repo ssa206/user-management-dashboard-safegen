@@ -42,10 +42,10 @@ export default function LoginPage() {
       <div className="w-full max-w-md p-8 space-y-8">
         <div className="text-center flex flex-col items-center gap-4">
           <Image
-            src="/safegenerations-logo.svg"
+            src="/SafeGenerations-logo.png"
             alt="SafeGenerations logo"
-            width={220}
-            height={120}
+            width={230}
+            height={118}
             priority
           />
           <h1 className="text-4xl font-bold text-black">

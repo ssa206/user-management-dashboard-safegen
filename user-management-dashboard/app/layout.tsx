@@ -23,9 +23,9 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/safegenerations-logo.svg",
-        width: 120,
-        height: 120,
+        url: "/SafeGenerations-logo.png",
+        width: 586,
+        height: 300,
         alt: "SafeGenerations logo",
       },
     ],
@@ -35,10 +35,10 @@ export const metadata: Metadata = {
     title: "SafeGenerations OTP People and Users Management & Mapping Tool",
     description:
       "SafeGenerations platform for managing OTP people records, user relationships, and database mappings.",
-    images: ["/safegenerations-logo.svg"],
+    images: ["/SafeGenerations-logo.png"],
   },
   icons: {
-    icon: [{ url: "/favicon.ico" }, { url: "/icon.svg" }],
+    icon: [{ url: "/favicon.ico" }, { url: "/icon.svg" }, { url: "/SafeGenerations-logo.png" }],
     shortcut: [{ url: "/favicon.ico" }],
     apple: [{ url: "/icon.svg" }],
   },
