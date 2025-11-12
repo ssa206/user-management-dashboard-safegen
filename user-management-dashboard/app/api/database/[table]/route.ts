@@ -56,7 +56,7 @@ export async function GET(
       ORDER BY ordinal_position
     `, [table]);
     
-    const columns = columnsResult.rows.map(row => row.column_name);
+    const columns = columnsResult.rows.map((row: any) => row.column_name);
     const validSortBy = columns.includes(sortBy) ? sortBy : columns[0];
     
     // Build search condition
@@ -69,7 +69,7 @@ export async function GET(
       const searchConditions: string[] = [];
       let paramIndex = 1;
       
-      columnsResult.rows.forEach((row) => {
+      columnsResult.rows.forEach((row: any) => {
         const colType = row.data_type;
         const colName = row.column_name;
         if (['character varying', 'text', 'character'].includes(colType)) {

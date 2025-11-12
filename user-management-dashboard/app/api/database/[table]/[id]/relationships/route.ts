@@ -95,7 +95,7 @@ export async function GET(
         data: mainRecord.rows[0]
       },
       relatedRecords,
-      relationships: relationships.map(r => ({
+      relationships: relationships.map((r: any) => ({
         from: r.from_table,
         to: r.to_table,
         fromColumn: r.from_column,

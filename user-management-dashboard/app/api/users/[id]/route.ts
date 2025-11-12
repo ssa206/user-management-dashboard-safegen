@@ -48,8 +48,8 @@ export async function PUT(
     
     // Build dynamic UPDATE query
     const fields = Object.keys(body).filter(key => key !== 'id');
-    const setClause = fields.map((field, i) => `${field} = $${i + 2}`).join(', ');
-    const values = [id, ...fields.map(field => body[field])];
+    const setClause = fields.map((field: string, i: number) => `${field} = $${i + 2}`).join(', ');
+    const values = [id, ...fields.map((field: any) => body[field])];
     
     const result = await db.query(
       `UPDATE users SET ${setClause} WHERE id = $1 RETURNING *`,
