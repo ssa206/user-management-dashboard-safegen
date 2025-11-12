@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -280,9 +281,20 @@ export default function DatabaseExplorerPage() {
         {/* Header */}
         <div className="border-b-4 border-black bg-white p-6">
           <div className="flex justify-between items-center">
-            <h1 className="text-3xl font-bold text-black capitalize">
-              {selectedTable} Table
-            </h1>
+            <div className="flex items-center gap-4">
+              <div className="relative h-10 w-10">
+                <Image
+                  src="/safegenerations-logo.svg"
+                  alt="SafeGenerations logo"
+                  fill
+                  sizes="40px"
+                  priority
+                />
+              </div>
+              <h1 className="text-3xl font-bold text-black capitalize">
+                {selectedTable} Table
+              </h1>
+            </div>
             
             {/* View Toggle */}
             <div className="flex gap-2 border-2 border-black rounded-xl overflow-hidden">

@@ -1,0 +1,13 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">SafeGenerations Logo</title>
+  <desc id="desc">Stylized shield containing an S monogram</desc>
+  <defs>
+    <linearGradient id="sgMonoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#111827" />
+      <stop offset="100%" stop-color="#4b5563" />
+    </linearGradient>
+  </defs>
+  <rect width="120" height="120" rx="24" fill="#f9fafb" />
+  <path d="M60 18c-13 0-24 5-34 14-2 2-3 5-3 8v32c0 3 1 6 3 8 10 9 21 14 34 14s24-5 34-14c2-2 3-5 3-8V40c0-3-1-6-3-8-10-9-21-14-34-14z" fill="url(#sgMonoGradient)" />
+  <path d="M42 46c0-6 7-11 18-11 6 0 13 1 18 4v9c-5-3-11-5-17-5-9 0-13 3-13 7 0 4 4 6 15 8 12 2 19 6 19 15 0 9-8 16-22 16-7 0-15-2-21-5v-10c6 4 13 6 20 6 8 0 13-3 13-7 0-4-4-6-14-8-13-3-19-7-19-17z" fill="#f9fafb" />
+</svg>

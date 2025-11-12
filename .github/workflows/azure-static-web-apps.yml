@@ -40,6 +40,8 @@ jobs:
       - name: Prepare deployment artifacts
         run: |
           cp staticwebapp.config.json build/
+          cp app/favicon.ico build/favicon.ico
+          cp app/icon.svg build/icon.svg
           if [ -d "public" ]; then cp -R public build/public; fi
         working-directory: ./user-management-dashboard
       
