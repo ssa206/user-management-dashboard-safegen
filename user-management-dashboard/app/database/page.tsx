@@ -282,15 +282,13 @@ export default function DatabaseExplorerPage() {
         <div className="border-b-4 border-black bg-white p-6">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-4">
-              <div className="relative h-10 w-10">
-                <Image
-                  src="/safegenerations-logo.svg"
-                  alt="SafeGenerations logo"
-                  fill
-                  sizes="40px"
-                  priority
-                />
-              </div>
+              <Image
+                src="/safegenerations-logo.svg"
+                alt="SafeGenerations logo"
+                width={160}
+                height={90}
+                priority
+              />
               <h1 className="text-3xl font-bold text-black capitalize">
                 {selectedTable} Table
               </h1>

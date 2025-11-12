@@ -40,16 +40,14 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-white">
       <div className="w-full max-w-md p-8 space-y-8">
-        <div className="text-center flex flex-col items-center gap-3">
-          <div className="relative h-16 w-16">
-            <Image
-              src="/safegenerations-logo.svg"
-              alt="SafeGenerations logo"
-              fill
-              sizes="64px"
-              priority
-            />
-          </div>
+        <div className="text-center flex flex-col items-center gap-4">
+          <Image
+            src="/safegenerations-logo.svg"
+            alt="SafeGenerations logo"
+            width={220}
+            height={120}
+            priority
+          />
           <h1 className="text-4xl font-bold text-black">
             SafeGenerations User Management
           </h1>

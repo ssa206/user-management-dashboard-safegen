@@ -325,15 +325,13 @@ export default function DashboardPage() {
       <div className="border-b-4 border-black bg-white sticky top-0 z-10 shadow-sm">
         <div className="px-8 py-6 flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <div className="relative h-12 w-12">
-              <Image
-                src="/safegenerations-logo.svg"
-                alt="SafeGenerations logo"
-                fill
-                sizes="48px"
-                priority
-              />
-            </div>
+            <Image
+              src="/safegenerations-logo.svg"
+              alt="SafeGenerations logo"
+              width={180}
+              height={100}
+              priority
+            />
             <h1 className="text-3xl font-bold text-black">SafeGenerations User Management</h1>
           </div>
           <div className="flex gap-4 items-center">

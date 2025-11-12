@@ -1,13 +1,13 @@
 <svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
   <title id="title">SafeGenerations Icon</title>
-  <desc id="desc">Monochrome shield icon with S monogram for SafeGenerations</desc>
+  <desc id="desc">Blue shield icon with white S monogram for SafeGenerations</desc>
   <defs>
-    <linearGradient id="sgIconMonoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#111827" />
-      <stop offset="100%" stop-color="#4b5563" />
+    <linearGradient id="sgIconGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#2563eb" />
     </linearGradient>
   </defs>
-  <rect width="256" height="256" rx="56" fill="#f9fafb" />
-  <path d="M128 44c-28 0-52 11-74 30-5 4-8 11-8 18v72c0 7 3 14 8 18 22 19 46 30 74 30s52-11 74-30c5-4 8-11 8-18V92c0-7-3-14-8-18-22-19-46-30-74-30z" fill="url(#sgIconMonoGradient)" />
-  <path d="M88 116c0-14 16-24 40-24 13 0 28 3 40 9v20c-12-8-25-12-38-12-21 0-28 7-28 14 0 9 9 12 35 17 27 5 43 13 43 34 0 20-18 36-48 36-16 0-33-4-48-12v-22c15 9 31 14 45 14 17 0 28-7 28-15 0-8-8-12-33-17-28-6-44-14-44-36z" fill="#f9fafb" />
+  <rect width="256" height="256" rx="56" fill="#f8fafc" />
+  <path d="M128 44c-28 0-52 11-74 30-5 4-8 11-8 18v72c0 7 3 14 8 18 22 19 46 30 74 30s52-11 74-30c5-4 8-11 8-18V92c0-7-3-14-8-18-22-19-46-30-74-30z" fill="url(#sgIconGradient)" />
+  <path d="M88 116c0-14 16-24 40-24 13 0 28 3 40 9v20c-12-8-25-12-38-12-21 0-28 7-28 14 0 9 9 12 35 17 27 5 43 13 43 34 0 20-18 36-48 36-16 0-33-4-48-12v-22c15 9 31 14 45 14 17 0 28-7 28-15 0-8-8-12-33-17-28-6-44-14-44-36z" fill="#f8fafc" />
 </svg>
