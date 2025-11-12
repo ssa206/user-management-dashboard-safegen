@@ -1,7 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  output: 'standalone',
+  // Enable static optimization for Azure Static Web Apps
+  images: {
+    unoptimized: true,
+  },
 };
 
 export default nextConfig;
