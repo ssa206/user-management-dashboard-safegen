@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
       ORDER BY ordinal_position
     `);
     
-    const columns = columnsResult.rows.map(row => row.column_name);
+    const columns = columnsResult.rows.map((row: any) => row.column_name);
     
     // Validate sortBy column exists to prevent SQL injection
     const validSortBy = columns.includes(sortBy) ? sortBy : 'id';
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
       const searchConditions: string[] = [];
       let paramIndex = 1;
       
-      columnsResult.rows.forEach((row) => {
+      columnsResult.rows.forEach((row: any) => {
         const colType = row.data_type;
         const colName = row.column_name;
         // Only search text-based columns
@@ -114,9 +114,9 @@ export async function POST(request: NextRequest) {
       AND column_name != 'id'
     `);
     
-    const columns = columnsResult.rows.map(row => row.column_name);
-    const values = columns.map(col => body[col]);
-    const placeholders = columns.map((_, i) => `$${i + 1}`).join(', ');
+    const columns = columnsResult.rows.map((row: any) => row.column_name);
+    const values = columns.map((col: any) => body[col]);
+    const placeholders = columns.map((_: any, i: number) => `$${i + 1}`).join(', ');
     
     const result = await db.query(
       `INSERT INTO users (${columns.join(', ')}) VALUES (${placeholders}) RETURNING *`,
