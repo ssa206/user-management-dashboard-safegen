@@ -1,0 +1,6 @@
+{
+  "apiRuntime": {
+    "type": "node",
+    "version": "20"
+  }
+}
