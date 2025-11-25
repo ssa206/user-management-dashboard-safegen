@@ -52,13 +52,16 @@ const getFileTypeInfo = (contentType: string, name: string) => {
     return { label: 'PDF', previewable: true };
   }
   if (['doc', 'docx'].includes(ext)) {
-    return { label: 'WORD', previewable: false };
+    return { label: 'WORD', previewable: true };
   }
-  if (['xls', 'xlsx', 'csv'].includes(ext)) {
-    return { label: 'SPREADSHEET', previewable: ext === 'csv' };
+  if (['xls', 'xlsx'].includes(ext)) {
+    return { label: 'EXCEL', previewable: true };
+  }
+  if (['csv'].includes(ext)) {
+    return { label: 'CSV', previewable: true };
   }
   if (['ppt', 'pptx'].includes(ext)) {
-    return { label: 'PRESENTATION', previewable: false };
+    return { label: 'POWERPOINT', previewable: true };
   }
   if (['js', 'ts', 'jsx', 'tsx', 'py', 'java', 'c', 'cpp', 'cs', 'go', 'rs', 'rb', 'php', 'swift', 'kt', 'html', 'css', 'scss'].includes(ext)) {
     return { label: 'CODE', previewable: true };
@@ -92,6 +95,19 @@ const isImagePreviewable = (contentType: string, name: string): boolean => {
 const isPdfPreviewable = (contentType: string, name: string): boolean => {
   const ext = name.split('.').pop()?.toLowerCase() || '';
   return contentType === 'application/pdf' || ext === 'pdf';
+};
+
+// Check if content is a Word document that can be converted to HTML
+const isDocxPreviewable = (contentType: string, name: string): boolean => {
+  const ext = name.split('.').pop()?.toLowerCase() || '';
+  return ext === 'docx';
+};
+
+// Check if content is an Office document that can't be previewed
+const isOfficeNotPreviewable = (contentType: string, name: string): boolean => {
+  const ext = name.split('.').pop()?.toLowerCase() || '';
+  const notPreviewable = ['doc', 'xls', 'xlsx', 'ppt', 'pptx'];
+  return notPreviewable.includes(ext);
 };
 
 // Check if content is video
@@ -154,9 +170,11 @@ export default function StoragePage() {
   const [uploading, setUploading] = useState(false);
   const [flatView, setFlatView] = useState(false);
   const [previewContent, setPreviewContent] = useState<string | null>(null);
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const previousBlobUrl = useRef<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -247,8 +265,20 @@ export default function StoragePage() {
     }
   };
 
+  // Helper to clean up old blob URL
+  const cleanupBlobUrl = () => {
+    if (previousBlobUrl.current) {
+      URL.revokeObjectURL(previousBlobUrl.current);
+      previousBlobUrl.current = null;
+    }
+  };
+
   const loadPreview = async (blob: BlobInfo) => {
+    // Clean up previous blob URL first
+    cleanupBlobUrl();
+    
     setPreviewContent(null);
+    setPreviewHtml(null);
     setPreviewUrl(null);
     
     // Check file size - don't preview files larger than 5MB for text, 50MB for media
@@ -271,6 +301,36 @@ export default function StoragePage() {
         if (response.ok) {
           const text = await response.text();
           setPreviewContent(text);
+        } else {
+          setPreviewContent('Failed to load preview');
+        }
+      } catch (err) {
+        setPreviewContent('Failed to load preview');
+      } finally {
+        setLoadingPreview(false);
+      }
+    } else if (isDocxPreviewable(blob.contentType, blob.name)) {
+      // Convert .docx to HTML using server-side mammoth
+      if (blob.size > maxMediaSize) {
+        setPreviewContent('File too large to preview. Download to view.');
+        return;
+      }
+      
+      setLoadingPreview(true);
+      try {
+        const params = new URLSearchParams({
+          container: blob.containerName,
+          blob: blob.fullPath,
+        });
+        const response = await fetch(`/api/storage/blobs/preview?${params}`);
+        const data = await response.json();
+        
+        if (response.ok && data.type === 'html') {
+          setPreviewHtml(data.content);
+        } else if (data.type === 'unsupported') {
+          setPreviewContent(data.message);
+        } else {
+          setPreviewContent('Failed to load preview');
         }
       } catch (err) {
         setPreviewContent('Failed to load preview');
@@ -286,14 +346,40 @@ export default function StoragePage() {
         return;
       }
       
-      // Generate preview URL
-      const params = new URLSearchParams({
-        container: blob.containerName,
-        blob: blob.fullPath,
-      });
-      setPreviewUrl(`/api/storage/blobs/download?${params}`);
+      // Fetch the file and create a blob URL (works with auth)
+      setLoadingPreview(true);
+      try {
+        const params = new URLSearchParams({
+          container: blob.containerName,
+          blob: blob.fullPath,
+          mode: 'view',
+        });
+        const response = await fetch(`/api/storage/blobs/download?${params}`);
+        if (response.ok) {
+          const fileBlob = await response.blob();
+          const url = URL.createObjectURL(fileBlob);
+          previousBlobUrl.current = url; // Track for cleanup
+          setPreviewUrl(url);
+        } else {
+          setPreviewContent('Failed to load preview');
+        }
+      } catch (err) {
+        setPreviewContent('Failed to load preview');
+      } finally {
+        setLoadingPreview(false);
+      }
+    } else if (isOfficeNotPreviewable(blob.contentType, blob.name)) {
+      // Other Office files can't be previewed inline
+      setPreviewContent('This file type cannot be previewed. Use the Download button to view.');
     }
   };
+  
+  // Clean up blob URL on unmount
+  useEffect(() => {
+    return () => {
+      cleanupBlobUrl();
+    };
+  }, []);
 
   const handleLogout = async () => {
     setLoggingOut(true);
@@ -552,7 +638,7 @@ export default function StoragePage() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className={`flex-1 flex flex-col min-w-0 ${selectedBlob ? 'hidden lg:flex' : 'flex'}`}>
         {/* Header */}
         <div className="hidden lg:block border-b-4 border-black bg-white sticky top-0 z-10 shadow-sm">
           <div className="px-4 lg:px-8 py-4 lg:py-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
@@ -895,7 +981,7 @@ export default function StoragePage() {
                           </td>
                           <td className="px-3 lg:px-6 py-3 lg:py-4 text-sm hidden sm:table-cell">
                             {blob.matchedUser ? (
-                              <span className="px-2 py-1 rounded bg-black text-white text-xs font-bold">
+                              <span className="inline-block px-2 py-1 rounded bg-black text-white text-xs font-bold max-w-[120px] truncate">
                                 {blob.matchedUser.name || blob.matchedUser.email}
                               </span>
                             ) : (
@@ -917,8 +1003,8 @@ export default function StoragePage() {
 
       {/* File Details Panel */}
       {selectedBlob && (
-        <div className="fixed inset-0 lg:relative lg:inset-auto bg-white lg:w-96 border-l-4 border-black flex-shrink-0 overflow-auto z-20">
-          <div className="sticky top-0 bg-white border-b-4 border-black p-4 flex justify-between items-center">
+        <div className="fixed inset-0 lg:relative lg:inset-auto bg-white lg:w-[400px] lg:min-w-[400px] border-l-4 border-black flex-shrink-0 overflow-auto z-20">
+          <div className="sticky top-0 bg-white border-b-4 border-black p-4 flex justify-between items-center z-10">
             <h3 className="font-bold text-lg">File Details</h3>
             <button
               onClick={() => setSelectedBlob(null)}
@@ -939,28 +1025,54 @@ export default function StoragePage() {
                 <img 
                   src={previewUrl} 
                   alt={selectedBlob.name}
-                  className="w-full h-auto max-h-64 object-contain"
+                  className="w-full h-auto max-h-80 object-contain bg-white"
                 />
               ) : previewUrl && isPdfPreviewable(selectedBlob.contentType, selectedBlob.name) ? (
-                <iframe 
-                  src={previewUrl}
-                  className="w-full h-64"
-                  title={selectedBlob.name}
-                />
+                <div className="flex flex-col">
+                  <embed
+                    src={previewUrl}
+                    type="application/pdf"
+                    className="w-full h-96 bg-white"
+                  />
+                  <button 
+                    onClick={async () => {
+                      // Fetch fresh copy for new tab
+                      const params = new URLSearchParams({
+                        container: selectedBlob.containerName,
+                        blob: selectedBlob.fullPath,
+                        mode: 'view',
+                      });
+                      const response = await fetch(`/api/storage/blobs/download?${params}`);
+                      if (response.ok) {
+                        const blob = await response.blob();
+                        const url = URL.createObjectURL(blob);
+                        window.open(url, '_blank');
+                      }
+                    }}
+                    className="block w-full text-center py-2 bg-black text-white text-sm font-bold hover:bg-gray-800"
+                  >
+                    Open PDF in New Tab
+                  </button>
+                </div>
               ) : previewUrl && isVideoPreviewable(selectedBlob.contentType, selectedBlob.name) ? (
                 <video 
                   src={previewUrl}
                   controls
-                  className="w-full h-auto max-h-64"
+                  className="w-full h-auto max-h-80"
                 />
               ) : previewUrl && isAudioPreviewable(selectedBlob.contentType, selectedBlob.name) ? (
                 <div className="p-4">
                   <audio src={previewUrl} controls className="w-full" />
                 </div>
+              ) : previewHtml ? (
+                <div 
+                  className="p-4 overflow-auto max-h-96 bg-white prose prose-sm max-w-none"
+                  dangerouslySetInnerHTML={{ __html: previewHtml }}
+                />
               ) : previewContent ? (
-                <pre className="p-4 text-xs overflow-auto max-h-64 whitespace-pre-wrap break-words font-mono">
-                  {previewContent.substring(0, 5000)}
-                  {previewContent.length > 5000 && '\n\n... (truncated)'}
+                <pre className="p-4 text-xs overflow-auto max-h-80 whitespace-pre-wrap break-words font-mono bg-white">
+                  {previewContent.substring(0, 10000)}
+                  {previewContent.length > 10000 && '\n\n... (truncated)'}
                 </pre>
               ) : (
                 <div className="p-8 text-center">

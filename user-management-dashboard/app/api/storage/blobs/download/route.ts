@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { downloadBlob, getBlobProperties } from '@/lib/blob';
 
-// GET - Download a blob
+// GET - Download or view a blob
 export async function GET(request: NextRequest) {
   try {
     const session = await getSession();
@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const container = searchParams.get('container');
     const blob = searchParams.get('blob');
+    const mode = searchParams.get('mode') || 'download'; // 'download' or 'view'
     
     if (!container || !blob) {
       return NextResponse.json({ error: 'Container and blob name are required' }, { status: 400 });
@@ -24,11 +25,18 @@ export async function GET(request: NextRequest) {
     // Download the blob
     const data = await downloadBlob(container, blob);
     
-    // Return as downloadable file
+    // Set headers based on mode
     const headers = new Headers();
     headers.set('Content-Type', properties.contentType);
-    headers.set('Content-Disposition', `attachment; filename="${properties.name}"`);
     headers.set('Content-Length', String(data.length));
+    
+    if (mode === 'view') {
+      // For viewing inline (PDFs, images, etc.)
+      headers.set('Content-Disposition', `inline; filename="${properties.name}"`);
+    } else {
+      // For downloading
+      headers.set('Content-Disposition', `attachment; filename="${properties.name}"`);
+    }
     
     return new NextResponse(data, {
       status: 200,
@@ -42,4 +50,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-
