@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
       headers.set('Content-Disposition', `attachment; filename="${properties.name}"`);
     }
     
-    return new NextResponse(data, {
+    return new NextResponse(new Uint8Array(data), {
       status: 200,
       headers,
     });
