@@ -556,7 +556,8 @@ export default function StoragePage() {
         {/* Header */}
         <div className="hidden lg:block border-b-4 border-black bg-white sticky top-0 z-10 shadow-sm">
           <div className="px-4 lg:px-8 py-4 lg:py-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-            <Image
+            <div className="flex items-center gap-6">
+              <Image
                 src="/SafeGenerations-logo.png"
                 alt="SafeGenerations logo"
                 width={180}
@@ -564,6 +565,13 @@ export default function StoragePage() {
                 priority
                 className="hidden lg:block grayscale"
               />
+              <div className="hidden lg:block border-l-2 border-black pl-6">
+                <h1 className="text-2xl font-bold text-black">File Storage</h1>
+                <p className="text-sm text-gray-500">
+                  {selectedContainer ? selectedContainer : 'Select a container'}
+                </p>
+              </div>
+            </div>
             
             {/* Controls */}
             <div className="flex items-center gap-2 lg:gap-3 flex-wrap">

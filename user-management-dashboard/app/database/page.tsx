@@ -290,7 +290,8 @@ export default function DatabaseExplorerPage() {
         {/* Header */}
         <div className="border-b-4 border-black bg-white p-6">
           <div className="flex justify-between items-center">
-            <Image
+            <div className="flex items-center gap-6">
+              <Image
                 src="/SafeGenerations-logo.png"
                 alt="SafeGenerations logo"
                 width={200}
@@ -298,6 +299,11 @@ export default function DatabaseExplorerPage() {
                 priority
                 className="grayscale"
               />
+              <div className="border-l-2 border-black pl-6">
+                <h1 className="text-2xl font-bold text-black">Database Explorer</h1>
+                <p className="text-sm text-gray-500 capitalize">{selectedTable} table</p>
+              </div>
+            </div>
             
             {/* View Toggle */}
             <div className="flex gap-2 border-2 border-black rounded-xl overflow-hidden">

@@ -366,12 +366,15 @@ export default function DashboardPage() {
         {/* Controls Bar */}
         <div className="mb-6 bg-gray-50 border-2 border-black p-6 rounded-2xl">
           <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-            <button
-              onClick={handleAdd}
-              className="px-8 py-3 bg-black text-white font-bold hover:bg-gray-800 transition-colors shadow-md rounded-xl"
-            >
-              + Add New User
-            </button>
+            <div className="flex items-center gap-4">
+              <h1 className="text-2xl font-bold text-black">User Management</h1>
+              <button
+                onClick={handleAdd}
+                className="px-8 py-3 bg-black text-white font-bold hover:bg-gray-800 transition-colors shadow-md rounded-xl"
+              >
+                + Add New User
+              </button>
+            </div>
             
             <div className="flex-1 lg:max-w-xl w-full">
               <input
