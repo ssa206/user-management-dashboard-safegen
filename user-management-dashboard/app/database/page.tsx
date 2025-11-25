@@ -261,7 +261,7 @@ export default function DatabaseExplorerPage() {
               }`}
               title="File Storage"
             >
-              {sidebarOpen ? '☁️ File Storage' : '☁️'}
+              {sidebarOpen ? 'File Storage' : 'FS'}
             </button>
             <button
               onClick={() => router.push('/dashboard')}

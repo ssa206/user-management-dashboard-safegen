@@ -339,7 +339,7 @@ export default function DashboardPage() {
               onClick={() => router.push('/storage')}
               className="px-8 py-3 border-2 border-black text-black bg-white font-bold hover:bg-gray-100 transition-colors rounded-xl"
             >
-              ☁️ File Storage
+              File Storage
             </button>
             <button
               onClick={() => router.push('/database')}
