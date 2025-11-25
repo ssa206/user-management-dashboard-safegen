@@ -173,6 +173,8 @@ export default function StoragePage() {
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
+  const [showJsonViewer, setShowJsonViewer] = useState(false);
+  const [jsonData, setJsonData] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previousBlobUrl = useRef<string | null>(null);
   const router = useRouter();
@@ -301,6 +303,19 @@ export default function StoragePage() {
         if (response.ok) {
           const text = await response.text();
           setPreviewContent(text);
+          
+          // Try to parse as JSON for the tree viewer
+          const ext = blob.name.split('.').pop()?.toLowerCase();
+          if (ext === 'json' || blob.contentType === 'application/json') {
+            try {
+              const parsed = JSON.parse(text);
+              setJsonData(parsed);
+            } catch {
+              setJsonData(null);
+            }
+          } else {
+            setJsonData(null);
+          }
         } else {
           setPreviewContent('Failed to load preview');
         }
@@ -1070,10 +1085,20 @@ export default function StoragePage() {
                   dangerouslySetInnerHTML={{ __html: previewHtml }}
                 />
               ) : previewContent ? (
-                <pre className="p-4 text-xs overflow-auto max-h-80 whitespace-pre-wrap break-words font-mono bg-white">
-                  {previewContent.substring(0, 10000)}
-                  {previewContent.length > 10000 && '\n\n... (truncated)'}
-                </pre>
+                <div className="flex flex-col">
+                  <pre className="p-4 text-xs overflow-auto max-h-72 whitespace-pre-wrap break-words font-mono bg-white">
+                    {previewContent.substring(0, 10000)}
+                    {previewContent.length > 10000 && '\n\n... (truncated)'}
+                  </pre>
+                  {jsonData && (
+                    <button
+                      onClick={() => setShowJsonViewer(true)}
+                      className="block w-full text-center py-2 bg-black text-white text-sm font-bold hover:bg-gray-800"
+                    >
+                      View as Tree
+                    </button>
+                  )}
+                </div>
               ) : (
                 <div className="p-8 text-center">
                   <div className="text-sm font-bold text-gray-500 uppercase">
@@ -1236,6 +1261,144 @@ export default function StoragePage() {
           </div>
         </div>
       )}
+
+      {/* JSON Tree Viewer Modal */}
+      {showJsonViewer && jsonData && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white border-4 border-black rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+            <div className="p-4 border-b-4 border-black flex justify-between items-center flex-shrink-0">
+              <h3 className="text-xl font-bold text-black">JSON Tree View</h3>
+              <button
+                onClick={() => setShowJsonViewer(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors font-bold border-2 border-black"
+              >
+                X
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-6">
+              <JsonTreeView data={jsonData} />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// JSON Tree View Component
+function JsonTreeView({ data, level = 0 }: { data: any; level?: number }) {
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  
+  const toggleCollapse = (key: string) => {
+    const newCollapsed = new Set(collapsed);
+    if (newCollapsed.has(key)) {
+      newCollapsed.delete(key);
+    } else {
+      newCollapsed.add(key);
+    }
+    setCollapsed(newCollapsed);
+  };
+  
+  const renderValue = (value: any, key: string, path: string): React.ReactNode => {
+    const fullPath = path ? `${path}.${key}` : key;
+    const isCollapsed = collapsed.has(fullPath);
+    
+    if (value === null) {
+      return <span className="text-gray-400 italic">null</span>;
+    }
+    
+    if (typeof value === 'boolean') {
+      return <span className="text-orange-600 font-medium">{value ? 'true' : 'false'}</span>;
+    }
+    
+    if (typeof value === 'number') {
+      return <span className="text-blue-600 font-medium">{value}</span>;
+    }
+    
+    if (typeof value === 'string') {
+      // Check if it's a date string
+      if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)) {
+        return (
+          <span className="text-purple-600">
+            &quot;{value}&quot;
+            <span className="text-gray-400 text-xs ml-2">
+              ({new Date(value).toLocaleString()})
+            </span>
+          </span>
+        );
+      }
+      // Check if it's a URL
+      if (value.startsWith('http://') || value.startsWith('https://')) {
+        return (
+          <a href={value} target="_blank" rel="noopener noreferrer" className="text-green-600 underline hover:text-green-800">
+            &quot;{value.length > 50 ? value.substring(0, 50) + '...' : value}&quot;
+          </a>
+        );
+      }
+      return <span className="text-green-600">&quot;{value.length > 100 ? value.substring(0, 100) + '...' : value}&quot;</span>;
+    }
+    
+    if (Array.isArray(value)) {
+      if (value.length === 0) {
+        return <span className="text-gray-500">[ ]</span>;
+      }
+      
+      return (
+        <div>
+          <button
+            onClick={() => toggleCollapse(fullPath)}
+            className="text-gray-600 hover:text-black font-mono text-sm"
+          >
+            {isCollapsed ? '[+]' : '[-]'} Array ({value.length})
+          </button>
+          {!isCollapsed && (
+            <div className="ml-6 border-l-2 border-gray-200 pl-4 mt-1">
+              {value.map((item, index) => (
+                <div key={index} className="py-1">
+                  <span className="text-gray-400 font-mono text-sm mr-2">[{index}]</span>
+                  {renderValue(item, String(index), fullPath)}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+    
+    if (typeof value === 'object') {
+      const keys = Object.keys(value);
+      if (keys.length === 0) {
+        return <span className="text-gray-500">{'{ }'}</span>;
+      }
+      
+      return (
+        <div>
+          <button
+            onClick={() => toggleCollapse(fullPath)}
+            className="text-gray-600 hover:text-black font-mono text-sm"
+          >
+            {isCollapsed ? '{+}' : '{-}'} Object ({keys.length} keys)
+          </button>
+          {!isCollapsed && (
+            <div className="ml-6 border-l-2 border-gray-200 pl-4 mt-1">
+              {keys.map((k) => (
+                <div key={k} className="py-1">
+                  <span className="font-bold text-black mr-2">{k}:</span>
+                  {renderValue(value[k], k, fullPath)}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+    
+    return <span className="text-gray-600">{String(value)}</span>;
+  };
+  
+  return (
+    <div className="font-mono text-sm">
+      {renderValue(data, 'root', '')}
     </div>
   );
 }
