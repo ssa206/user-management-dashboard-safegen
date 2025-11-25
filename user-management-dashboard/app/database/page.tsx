@@ -255,13 +255,22 @@ export default function DatabaseExplorerPage() {
           {/* Sidebar Footer */}
           <div className={`border-t-4 border-black bg-white space-y-3 ${sidebarOpen ? 'p-4' : 'p-2'}`}>
             <button
+              onClick={() => router.push('/storage')}
+              className={`w-full border-2 border-black text-black bg-white font-bold hover:bg-gray-100 transition-colors rounded-xl ${
+                sidebarOpen ? 'px-4 py-3' : 'px-2 py-2 text-lg'
+              }`}
+              title="File Storage"
+            >
+              {sidebarOpen ? '☁️ File Storage' : '☁️'}
+            </button>
+            <button
               onClick={() => router.push('/dashboard')}
               className={`w-full border-2 border-black text-black bg-white font-bold hover:bg-gray-100 transition-colors rounded-xl ${
                 sidebarOpen ? 'px-4 py-3' : 'px-2 py-2 text-lg'
               }`}
               title="Go to Dashboard"
             >
-              {sidebarOpen ? '← Dashboard' : 'H'}
+              {sidebarOpen ? '← Dashboard' : '🏠'}
             </button>
             <button
               onClick={handleLogout}

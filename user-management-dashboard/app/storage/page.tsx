@@ -1,0 +1,1129 @@
+'use client';
+
+import Image from 'next/image';
+import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+
+interface Container {
+  name: string;
+  lastModified?: string;
+  metadata: Record<string, string>;
+}
+
+interface BlobInfo {
+  name: string;
+  containerName: string;
+  fullPath: string;
+  size: number;
+  contentType: string;
+  lastModified: string;
+  createdOn?: string;
+  metadata: Record<string, string>;
+  isDirectory: boolean;
+  userId?: string;
+  userIdentifier?: string;
+  matchedUser?: {
+    id: string;
+    name?: string;
+    email?: string;
+  };
+}
+
+interface UserInfo {
+  id: string;
+  name?: string;
+  email?: string;
+}
+
+// File type labels
+const getFileTypeInfo = (contentType: string, name: string) => {
+  const ext = name.split('.').pop()?.toLowerCase() || '';
+  
+  if (contentType.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico'].includes(ext)) {
+    return { label: 'IMAGE', previewable: true };
+  }
+  if (contentType.startsWith('video/') || ['mp4', 'avi', 'mov', 'wmv', 'flv', 'mkv', 'webm'].includes(ext)) {
+    return { label: 'VIDEO', previewable: true };
+  }
+  if (contentType.startsWith('audio/') || ['mp3', 'wav', 'flac', 'aac', 'ogg', 'm4a'].includes(ext)) {
+    return { label: 'AUDIO', previewable: true };
+  }
+  if (['pdf'].includes(ext)) {
+    return { label: 'PDF', previewable: true };
+  }
+  if (['doc', 'docx'].includes(ext)) {
+    return { label: 'WORD', previewable: false };
+  }
+  if (['xls', 'xlsx', 'csv'].includes(ext)) {
+    return { label: 'SPREADSHEET', previewable: ext === 'csv' };
+  }
+  if (['ppt', 'pptx'].includes(ext)) {
+    return { label: 'PRESENTATION', previewable: false };
+  }
+  if (['js', 'ts', 'jsx', 'tsx', 'py', 'java', 'c', 'cpp', 'cs', 'go', 'rs', 'rb', 'php', 'swift', 'kt', 'html', 'css', 'scss'].includes(ext)) {
+    return { label: 'CODE', previewable: true };
+  }
+  if (['json', 'xml', 'yaml', 'yml', 'toml'].includes(ext)) {
+    return { label: 'DATA', previewable: true };
+  }
+  if (['zip', 'rar', '7z', 'tar', 'gz', 'bz2'].includes(ext)) {
+    return { label: 'ARCHIVE', previewable: false };
+  }
+  if (['txt', 'md', 'rtf', 'log'].includes(ext) || contentType.startsWith('text/')) {
+    return { label: 'TEXT', previewable: true };
+  }
+  return { label: 'FILE', previewable: false };
+};
+
+// Check if content is previewable as text
+const isTextPreviewable = (contentType: string, name: string): boolean => {
+  const ext = name.split('.').pop()?.toLowerCase() || '';
+  const textExtensions = ['txt', 'md', 'json', 'xml', 'yaml', 'yml', 'toml', 'js', 'ts', 'jsx', 'tsx', 'py', 'java', 'c', 'cpp', 'cs', 'go', 'rs', 'rb', 'php', 'swift', 'kt', 'html', 'css', 'scss', 'log', 'csv'];
+  return contentType.startsWith('text/') || textExtensions.includes(ext) || contentType === 'application/json';
+};
+
+// Check if content is an image
+const isImagePreviewable = (contentType: string, name: string): boolean => {
+  const ext = name.split('.').pop()?.toLowerCase() || '';
+  return contentType.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico'].includes(ext);
+};
+
+// Check if content is a PDF
+const isPdfPreviewable = (contentType: string, name: string): boolean => {
+  const ext = name.split('.').pop()?.toLowerCase() || '';
+  return contentType === 'application/pdf' || ext === 'pdf';
+};
+
+// Check if content is video
+const isVideoPreviewable = (contentType: string, name: string): boolean => {
+  const ext = name.split('.').pop()?.toLowerCase() || '';
+  return contentType.startsWith('video/') || ['mp4', 'webm', 'ogg'].includes(ext);
+};
+
+// Check if content is audio
+const isAudioPreviewable = (contentType: string, name: string): boolean => {
+  const ext = name.split('.').pop()?.toLowerCase() || '';
+  return contentType.startsWith('audio/') || ['mp3', 'wav', 'ogg', 'm4a'].includes(ext);
+};
+
+// Format file size
+const formatSize = (bytes: number): string => {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
+// Format relative time
+const formatRelativeTime = (dateString: string): string => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  
+  const minutes = Math.floor(diffMs / (1000 * 60));
+  const hours = Math.floor(diffMs / (1000 * 60 * 60));
+  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days < 7) return `${days}d ago`;
+  
+  return date.toLocaleDateString();
+};
+
+export default function StoragePage() {
+  const [containers, setContainers] = useState<Container[]>([]);
+  const [selectedContainer, setSelectedContainer] = useState<string>('');
+  const [blobs, setBlobs] = useState<BlobInfo[]>([]);
+  const [directories, setDirectories] = useState<string[]>([]);
+  const [currentPath, setCurrentPath] = useState<string>('');
+  const [loading, setLoading] = useState(true);
+  const [loadingBlobs, setLoadingBlobs] = useState(false);
+  const [error, setError] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [userFilter, setUserFilter] = useState('');
+  const [availableUsers, setAvailableUsers] = useState<UserInfo[]>([]);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState<BlobInfo | null>(null);
+  const [selectedBlob, setSelectedBlob] = useState<BlobInfo | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [flatView, setFlatView] = useState(false);
+  const [previewContent, setPreviewContent] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  useEffect(() => {
+    if (selectedContainer) {
+      fetchBlobs();
+    }
+  }, [selectedContainer, currentPath, flatView, searchQuery, userFilter]);
+
+  // Load preview when blob is selected
+  useEffect(() => {
+    if (selectedBlob) {
+      loadPreview(selectedBlob);
+    } else {
+      setPreviewContent(null);
+      setPreviewUrl(null);
+    }
+  }, [selectedBlob]);
+
+  const checkAuth = async () => {
+    try {
+      const response = await fetch('/api/auth/session');
+      if (!response.ok) {
+        router.push('/login');
+        return;
+      }
+      fetchContainers();
+    } catch (err) {
+      router.push('/login');
+    }
+  };
+
+  const fetchContainers = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const response = await fetch('/api/storage/containers');
+      const data = await response.json();
+      
+      if (response.ok) {
+        setContainers(data.containers);
+        if (data.containers.length > 0 && !selectedContainer) {
+          setSelectedContainer(data.containers[0].name);
+        }
+      } else {
+        setError(data.error || 'Failed to fetch containers');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch containers');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchBlobs = async () => {
+    if (!selectedContainer) return;
+    
+    try {
+      setLoadingBlobs(true);
+      const params = new URLSearchParams({
+        container: selectedContainer,
+        flat: String(flatView),
+        search: searchQuery,
+        user: userFilter,
+      });
+      
+      if (currentPath && !flatView) {
+        params.set('prefix', currentPath);
+      }
+      
+      const response = await fetch(`/api/storage/blobs?${params}`);
+      const data = await response.json();
+      
+      if (response.ok) {
+        setBlobs(data.blobs);
+        setDirectories(data.directories || []);
+        setAvailableUsers(data.users || []);
+      } else {
+        setError(data.error || 'Failed to fetch blobs');
+      }
+    } catch (err) {
+      setError('Failed to fetch blobs');
+    } finally {
+      setLoadingBlobs(false);
+    }
+  };
+
+  const loadPreview = async (blob: BlobInfo) => {
+    setPreviewContent(null);
+    setPreviewUrl(null);
+    
+    // Check file size - don't preview files larger than 5MB for text, 50MB for media
+    const maxTextSize = 5 * 1024 * 1024;
+    const maxMediaSize = 50 * 1024 * 1024;
+    
+    if (isTextPreviewable(blob.contentType, blob.name)) {
+      if (blob.size > maxTextSize) {
+        setPreviewContent('File too large to preview. Download to view.');
+        return;
+      }
+      
+      setLoadingPreview(true);
+      try {
+        const params = new URLSearchParams({
+          container: blob.containerName,
+          blob: blob.fullPath,
+        });
+        const response = await fetch(`/api/storage/blobs/download?${params}`);
+        if (response.ok) {
+          const text = await response.text();
+          setPreviewContent(text);
+        }
+      } catch (err) {
+        setPreviewContent('Failed to load preview');
+      } finally {
+        setLoadingPreview(false);
+      }
+    } else if (isImagePreviewable(blob.contentType, blob.name) || 
+               isPdfPreviewable(blob.contentType, blob.name) ||
+               isVideoPreviewable(blob.contentType, blob.name) ||
+               isAudioPreviewable(blob.contentType, blob.name)) {
+      if (blob.size > maxMediaSize) {
+        setPreviewContent('File too large to preview. Download to view.');
+        return;
+      }
+      
+      // Generate preview URL
+      const params = new URLSearchParams({
+        container: blob.containerName,
+        blob: blob.fullPath,
+      });
+      setPreviewUrl(`/api/storage/blobs/download?${params}`);
+    }
+  };
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    await fetch('/api/auth/logout', { method: 'POST' });
+    setTimeout(() => {
+      router.push('/login');
+    }, 800);
+  };
+
+  const navigateToFolder = (folderPath: string) => {
+    setCurrentPath(folderPath);
+    setSelectedBlob(null);
+  };
+
+  const getBreadcrumbs = () => {
+    if (!currentPath) return [{ name: 'Root', path: '' }];
+    
+    const parts = currentPath.split('/').filter(Boolean);
+    const breadcrumbs = [{ name: 'Root', path: '' }];
+    
+    let accumulated = '';
+    parts.forEach(part => {
+      accumulated += part + '/';
+      breadcrumbs.push({ name: part, path: accumulated });
+    });
+    
+    return breadcrumbs;
+  };
+
+  const handleDownload = async (blob: BlobInfo) => {
+    try {
+      const params = new URLSearchParams({
+        container: blob.containerName,
+        blob: blob.fullPath,
+      });
+      
+      const response = await fetch(`/api/storage/blobs/download?${params}`);
+      
+      if (response.ok) {
+        const blobData = await response.blob();
+        const url = window.URL.createObjectURL(blobData);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = blob.name;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        const data = await response.json();
+        alert(data.error || 'Failed to download file');
+      }
+    } catch (err) {
+      alert('Failed to download file');
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!showDeleteModal) return;
+    
+    try {
+      const params = new URLSearchParams({
+        container: showDeleteModal.containerName,
+        blob: showDeleteModal.fullPath,
+      });
+      
+      const response = await fetch(`/api/storage/blobs?${params}`, {
+        method: 'DELETE',
+      });
+      
+      if (response.ok) {
+        setShowDeleteModal(null);
+        setSelectedBlob(null);
+        fetchBlobs();
+      } else {
+        const data = await response.json();
+        alert(data.error || 'Failed to delete file');
+      }
+    } catch (err) {
+      alert('Failed to delete file');
+    }
+  };
+
+  const handleUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0 || !selectedContainer) return;
+    
+    setUploading(true);
+    
+    try {
+      for (const file of Array.from(files)) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('container', selectedContainer);
+        formData.append('path', currentPath.replace(/\/$/, ''));
+        
+        const response = await fetch('/api/storage/blobs', {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || 'Upload failed');
+        }
+      }
+      
+      setShowUploadModal(false);
+      fetchBlobs();
+    } catch (err: any) {
+      alert(err.message || 'Failed to upload files');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Group blobs by user
+  const blobsByUser = blobs.reduce((acc, blob) => {
+    const userId = blob.matchedUser?.id || blob.userIdentifier || 'unassigned';
+    if (!acc[userId]) {
+      acc[userId] = {
+        user: blob.matchedUser || (blob.userIdentifier ? { id: blob.userIdentifier, name: blob.userIdentifier } : null),
+        blobs: [],
+      };
+    }
+    acc[userId].blobs.push(blob);
+    return acc;
+  }, {} as Record<string, { user: UserInfo | null; blobs: BlobInfo[] }>);
+
+  if (loading && containers.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="text-2xl text-black">Loading...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-white flex flex-col lg:flex-row">
+      {/* Logout Animation */}
+      {loggingOut && (
+        <div className="fixed inset-0 bg-white z-50 flex items-center justify-center animate-fade-in">
+          <div className="text-center">
+            <div className="mb-6 inline-block">
+              <div className="w-16 h-16 border-4 border-black border-t-transparent rounded-full animate-spin"></div>
+            </div>
+            <h2 className="text-2xl font-bold text-black mb-2">Logging out...</h2>
+            <p className="text-gray-600">See you soon!</p>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Header */}
+      <div className="lg:hidden border-b-4 border-black bg-white p-4 flex items-center justify-between">
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="p-2 border-2 border-black rounded-lg font-bold"
+        >
+          {sidebarOpen ? 'Close' : 'Menu'}
+        </button>
+        <h1 className="text-xl font-bold text-black">File Explorer</h1>
+        <button
+          onClick={() => router.push('/dashboard')}
+          className="p-2 border-2 border-black rounded-lg font-bold"
+        >
+          Back
+        </button>
+      </div>
+
+      {/* Sidebar - Containers */}
+      <div 
+        className={`${sidebarOpen ? 'block' : 'hidden'} lg:block ${sidebarOpen ? 'w-full lg:w-72' : 'lg:w-16'} border-b-4 lg:border-b-0 lg:border-r-4 border-black bg-gray-50 flex-shrink-0`}
+      >
+        <div className="lg:sticky lg:top-0 lg:h-screen flex flex-col">
+          {/* Sidebar Header */}
+          <div className={`hidden lg:flex border-b-4 border-black bg-white items-center ${sidebarOpen ? 'p-4 justify-between' : 'p-2 justify-center'}`}>
+            {sidebarOpen && (
+              <h2 className="font-bold text-black text-xl">Containers</h2>
+            )}
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors font-bold text-lg"
+            >
+              {sidebarOpen ? '<' : '>'}
+            </button>
+          </div>
+
+          {/* Container List */}
+          <div className={`flex-1 overflow-y-auto ${sidebarOpen ? 'p-4' : 'p-2'}`}>
+            {containers.map((container) => {
+              const isSelected = selectedContainer === container.name;
+              
+              return (
+                <button
+                  key={container.name}
+                  onClick={() => {
+                    setSelectedContainer(container.name);
+                    setCurrentPath('');
+                    setSelectedBlob(null);
+                    if (window.innerWidth < 1024) setSidebarOpen(false);
+                  }}
+                  className={`w-full text-left mb-2 border-2 border-black rounded-lg transition-all ${
+                    sidebarOpen ? 'p-3' : 'p-2'
+                  } ${
+                    isSelected 
+                      ? 'bg-black text-white' 
+                      : 'bg-white text-black hover:bg-gray-100'
+                  }`}
+                  title={container.name}
+                >
+                  {sidebarOpen ? (
+                    <div>
+                      <div className="font-bold">{container.name}</div>
+                      {container.lastModified && (
+                        <div className={`text-xs mt-1 ${isSelected ? 'text-gray-300' : 'text-gray-500'}`}>
+                          {formatRelativeTime(container.lastModified)}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center text-[10px] font-bold">
+                      {container.name.substring(0, 2).toUpperCase()}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+            
+            {containers.length === 0 && !loading && sidebarOpen && (
+              <div className="text-center py-8 text-gray-500">
+                No containers found
+              </div>
+            )}
+          </div>
+
+          {/* Sidebar Footer */}
+          <div className={`border-t-4 border-black bg-white space-y-3 ${sidebarOpen ? 'p-4' : 'p-2'}`}>
+            <button
+              onClick={() => router.push('/dashboard')}
+              className={`w-full border-2 border-black text-black bg-white font-bold hover:bg-gray-100 transition-colors rounded-xl ${
+                sidebarOpen ? 'px-4 py-3' : 'px-2 py-2 text-lg'
+              }`}
+            >
+              {sidebarOpen ? '< Dashboard' : '<'}
+            </button>
+            <button
+              onClick={handleLogout}
+              disabled={loggingOut}
+              className={`w-full bg-black text-white font-bold hover:bg-gray-800 transition-colors rounded-xl disabled:opacity-50 ${
+                sidebarOpen ? 'px-4 py-3' : 'px-2 py-2 text-lg'
+              }`}
+            >
+              {sidebarOpen ? (loggingOut ? 'Logging out...' : 'Logout') : 'X'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Header */}
+        <div className="hidden lg:block border-b-4 border-black bg-white sticky top-0 z-10 shadow-sm">
+          <div className="px-4 lg:px-8 py-4 lg:py-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+            <div className="flex items-center gap-4">
+              <Image
+                src="/SafeGenerations-logo.png"
+                alt="SafeGenerations logo"
+                width={180}
+                height={93}
+                priority
+                className="hidden lg:block"
+              />
+              <div>
+                <h1 className="text-2xl lg:text-3xl font-bold text-black">File Explorer</h1>
+                <p className="text-sm text-gray-500 mt-1">
+                  {selectedContainer ? `Container: ${selectedContainer}` : 'Select a container'}
+                </p>
+              </div>
+            </div>
+            
+            {/* Controls */}
+            <div className="flex items-center gap-2 lg:gap-3 flex-wrap">
+              <div className="flex border-2 border-black rounded-xl overflow-hidden">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`px-3 lg:px-6 py-2 font-bold transition-colors text-sm ${
+                    viewMode === 'grid' ? 'bg-black text-white' : 'bg-white text-black hover:bg-gray-100'
+                  }`}
+                >
+                  Grid
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`px-3 lg:px-6 py-2 font-bold transition-colors text-sm ${
+                    viewMode === 'list' ? 'bg-black text-white' : 'bg-white text-black hover:bg-gray-100'
+                  }`}
+                >
+                  List
+                </button>
+              </div>
+              
+              <button
+                onClick={() => setFlatView(!flatView)}
+                className={`px-3 lg:px-6 py-2 border-2 border-black rounded-xl font-bold transition-colors text-sm ${
+                  flatView ? 'bg-black text-white' : 'bg-white text-black hover:bg-gray-100'
+                }`}
+              >
+                {flatView ? 'Flat' : 'Folders'}
+              </button>
+              
+              {selectedContainer && (
+                <button
+                  onClick={() => setShowUploadModal(true)}
+                  className="px-4 lg:px-8 py-2 lg:py-3 bg-black text-white font-bold hover:bg-gray-800 transition-colors rounded-xl text-sm"
+                >
+                  + Upload
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile Controls */}
+        <div className="lg:hidden border-b-2 border-black bg-white p-4">
+          <div className="flex gap-2 flex-wrap">
+            <div className="flex border-2 border-black rounded-lg overflow-hidden">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`px-3 py-1 font-bold text-sm ${
+                  viewMode === 'grid' ? 'bg-black text-white' : 'bg-white text-black'
+                }`}
+              >
+                Grid
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`px-3 py-1 font-bold text-sm ${
+                  viewMode === 'list' ? 'bg-black text-white' : 'bg-white text-black'
+                }`}
+              >
+                List
+              </button>
+            </div>
+            
+            <button
+              onClick={() => setFlatView(!flatView)}
+              className={`px-3 py-1 border-2 border-black rounded-lg font-bold text-sm ${
+                flatView ? 'bg-black text-white' : 'bg-white text-black'
+              }`}
+            >
+              {flatView ? 'Flat' : 'Folders'}
+            </button>
+            
+            {selectedContainer && (
+              <button
+                onClick={() => setShowUploadModal(true)}
+                className="px-3 py-1 bg-black text-white font-bold rounded-lg text-sm"
+              >
+                + Upload
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Toolbar */}
+        {selectedContainer && (
+          <div className="bg-gray-50 border-b-2 border-black px-4 lg:px-8 py-3 lg:py-4">
+            <div className="flex flex-col gap-3">
+              {/* Breadcrumbs */}
+              {!flatView && (
+                <div className="flex items-center gap-1 lg:gap-2 flex-wrap text-sm">
+                  {getBreadcrumbs().map((crumb, idx) => (
+                    <div key={crumb.path} className="flex items-center">
+                      {idx > 0 && <span className="text-gray-400 mx-1">/</span>}
+                      <button
+                        onClick={() => navigateToFolder(crumb.path)}
+                        className={`px-2 py-1 rounded-lg font-bold transition-colors ${
+                          idx === getBreadcrumbs().length - 1
+                            ? 'bg-black text-white'
+                            : 'bg-white border border-black text-black hover:bg-gray-100'
+                        }`}
+                      >
+                        {crumb.name}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {/* Search and Filter */}
+              <div className="flex flex-col sm:flex-row gap-2 lg:gap-3">
+                <input
+                  type="text"
+                  placeholder="Search files..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="flex-1 px-4 py-2 border-2 border-black text-black bg-white focus:outline-none focus:ring-2 focus:ring-gray-300 font-medium rounded-lg text-sm"
+                />
+                
+                {availableUsers.length > 0 && (
+                  <select
+                    value={userFilter}
+                    onChange={(e) => setUserFilter(e.target.value)}
+                    className="px-3 py-2 border-2 border-black rounded-lg focus:outline-none font-bold bg-white text-sm"
+                  >
+                    <option value="">All Users</option>
+                    {availableUsers.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.name || user.email || user.id}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                
+                <div className="text-sm font-bold text-black bg-white px-4 py-2 border-2 border-black rounded-lg whitespace-nowrap">
+                  {blobs.length} files
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Content Area */}
+        <div className="flex-1 overflow-auto p-4 lg:p-8">
+          {error && (
+            <div className="mb-6 p-4 border-2 border-black bg-gray-100 text-black rounded-xl">
+              {error}
+            </div>
+          )}
+
+          {loadingBlobs ? (
+            <div className="flex items-center justify-center py-20">
+              <div className="text-xl text-black">Loading files...</div>
+            </div>
+          ) : !selectedContainer ? (
+            <div className="flex items-center justify-center py-20">
+              <div className="text-center border-4 border-black rounded-2xl p-8 lg:p-12 bg-gray-50">
+                <p className="text-xl font-bold text-black mb-2">Select a Container</p>
+                <p className="text-gray-600">Choose a container from the sidebar to view files</p>
+              </div>
+            </div>
+          ) : blobs.length === 0 && directories.length === 0 ? (
+            <div className="flex items-center justify-center py-20">
+              <div className="text-center border-4 border-black rounded-2xl p-8 lg:p-12 bg-gray-50">
+                <p className="text-xl font-bold text-black mb-2">
+                  {searchQuery || userFilter ? 'No matching files' : 'This folder is empty'}
+                </p>
+                <p className="text-gray-600 mb-6">
+                  {searchQuery || userFilter ? 'Try adjusting your search or filters' : 'Upload some files to get started'}
+                </p>
+                {!searchQuery && !userFilter && (
+                  <button
+                    onClick={() => setShowUploadModal(true)}
+                    className="px-8 py-3 bg-black text-white font-bold rounded-xl hover:bg-gray-800 transition-colors"
+                  >
+                    + Upload Files
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : viewMode === 'grid' ? (
+            /* Grid View */
+            <div>
+              {/* Directories */}
+              {directories.length > 0 && (
+                <div className="mb-8">
+                  <h3 className="text-sm font-bold text-gray-500 mb-4 uppercase tracking-wide">Folders</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 lg:gap-4">
+                    {directories.map((dir) => {
+                      const dirName = dir.split('/').filter(Boolean).pop() || dir;
+                      return (
+                        <button
+                          key={dir}
+                          onClick={() => navigateToFolder(dir)}
+                          className="p-4 lg:p-6 border-2 border-black rounded-xl bg-white hover:bg-gray-100 transition-all text-left"
+                        >
+                          <div className="text-xs font-bold text-gray-500 mb-2">FOLDER</div>
+                          <div className="font-bold text-black truncate text-sm">{dirName}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Files grouped by user */}
+              {Object.entries(blobsByUser).map(([userId, group]) => (
+                <div key={userId} className="mb-8">
+                  {/* User Header */}
+                  <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-black">
+                    {group.user ? (
+                      <>
+                        <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-bold text-sm">
+                          {(group.user.name || group.user.email || userId).charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-bold text-black truncate">
+                            {group.user.name || group.user.email || userId}
+                          </h3>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 font-bold text-sm">
+                          ?
+                        </div>
+                        <h3 className="font-bold text-gray-600">Unassigned Files</h3>
+                      </>
+                    )}
+                    <span className="text-xs font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded border border-gray-300">
+                      {group.blobs.length}
+                    </span>
+                  </div>
+                  
+                  {/* Files Grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 lg:gap-4">
+                    {group.blobs.map((blob) => {
+                      const fileType = getFileTypeInfo(blob.contentType, blob.name);
+                      const isSelected = selectedBlob?.fullPath === blob.fullPath;
+                      
+                      return (
+                        <div
+                          key={blob.fullPath}
+                          onClick={() => setSelectedBlob(blob)}
+                          className={`p-3 lg:p-4 border-2 rounded-xl bg-white cursor-pointer transition-all ${
+                            isSelected 
+                              ? 'border-black shadow-lg' 
+                              : 'border-gray-200 hover:border-black'
+                          }`}
+                        >
+                          <div className="text-xs font-bold text-gray-500 mb-2">{fileType.label}</div>
+                          <div className="font-bold text-black truncate text-sm mb-1" title={blob.name}>
+                            {blob.name}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {formatSize(blob.size)}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            /* List View */
+            <div className="border-2 border-black rounded-xl overflow-hidden bg-white">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-black text-white">
+                    <tr>
+                      <th className="px-3 lg:px-6 py-3 lg:py-4 text-left text-xs font-bold uppercase tracking-wider">Name</th>
+                      <th className="px-3 lg:px-6 py-3 lg:py-4 text-left text-xs font-bold uppercase tracking-wider hidden sm:table-cell">User</th>
+                      <th className="px-3 lg:px-6 py-3 lg:py-4 text-left text-xs font-bold uppercase tracking-wider hidden md:table-cell">Size</th>
+                      <th className="px-3 lg:px-6 py-3 lg:py-4 text-left text-xs font-bold uppercase tracking-wider hidden lg:table-cell">Modified</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {/* Directories */}
+                    {directories.map((dir) => {
+                      const dirName = dir.split('/').filter(Boolean).pop() || dir;
+                      return (
+                        <tr 
+                          key={dir}
+                          onClick={() => navigateToFolder(dir)}
+                          className="hover:bg-gray-50 transition-colors cursor-pointer"
+                        >
+                          <td className="px-3 lg:px-6 py-3 lg:py-4 text-sm text-black font-bold">
+                            <span className="text-xs text-gray-500 mr-2">FOLDER</span>
+                            {dirName}
+                          </td>
+                          <td className="px-3 lg:px-6 py-3 lg:py-4 text-sm text-gray-500 hidden sm:table-cell">-</td>
+                          <td className="px-3 lg:px-6 py-3 lg:py-4 text-sm text-gray-500 hidden md:table-cell">-</td>
+                          <td className="px-3 lg:px-6 py-3 lg:py-4 text-sm text-gray-500 hidden lg:table-cell">-</td>
+                        </tr>
+                      );
+                    })}
+                    
+                    {/* Files */}
+                    {blobs.map((blob) => {
+                      const fileType = getFileTypeInfo(blob.contentType, blob.name);
+                      const isSelected = selectedBlob?.fullPath === blob.fullPath;
+                      
+                      return (
+                        <tr
+                          key={blob.fullPath}
+                          onClick={() => setSelectedBlob(blob)}
+                          className={`hover:bg-gray-50 transition-colors cursor-pointer ${
+                            isSelected ? 'bg-gray-100' : ''
+                          }`}
+                        >
+                          <td className="px-3 lg:px-6 py-3 lg:py-4 text-sm text-black">
+                            <div>
+                              <span className="text-xs text-gray-500 mr-2">{fileType.label}</span>
+                              <span className="font-bold">{blob.name}</span>
+                            </div>
+                            {flatView && blob.fullPath !== blob.name && (
+                              <div className="text-xs text-gray-400 truncate max-w-xs">{blob.fullPath}</div>
+                            )}
+                          </td>
+                          <td className="px-3 lg:px-6 py-3 lg:py-4 text-sm hidden sm:table-cell">
+                            {blob.matchedUser ? (
+                              <span className="px-2 py-1 rounded bg-black text-white text-xs font-bold">
+                                {blob.matchedUser.name || blob.matchedUser.email}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </td>
+                          <td className="px-3 lg:px-6 py-3 lg:py-4 text-sm text-gray-600 hidden md:table-cell">{formatSize(blob.size)}</td>
+                          <td className="px-3 lg:px-6 py-3 lg:py-4 text-sm text-gray-500 hidden lg:table-cell">{formatRelativeTime(blob.lastModified)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* File Details Panel */}
+      {selectedBlob && (
+        <div className="fixed inset-0 lg:relative lg:inset-auto bg-white lg:w-96 border-l-4 border-black flex-shrink-0 overflow-auto z-20">
+          <div className="sticky top-0 bg-white border-b-4 border-black p-4 flex justify-between items-center">
+            <h3 className="font-bold text-lg">File Details</h3>
+            <button
+              onClick={() => setSelectedBlob(null)}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors font-bold border-2 border-black"
+            >
+              X
+            </button>
+          </div>
+          
+          <div className="p-4 lg:p-6">
+            {/* Preview Area */}
+            <div className="mb-6 border-2 border-black rounded-xl overflow-hidden bg-gray-50">
+              {loadingPreview ? (
+                <div className="p-8 text-center">
+                  <div className="text-sm text-gray-500">Loading preview...</div>
+                </div>
+              ) : previewUrl && isImagePreviewable(selectedBlob.contentType, selectedBlob.name) ? (
+                <img 
+                  src={previewUrl} 
+                  alt={selectedBlob.name}
+                  className="w-full h-auto max-h-64 object-contain"
+                />
+              ) : previewUrl && isPdfPreviewable(selectedBlob.contentType, selectedBlob.name) ? (
+                <iframe 
+                  src={previewUrl}
+                  className="w-full h-64"
+                  title={selectedBlob.name}
+                />
+              ) : previewUrl && isVideoPreviewable(selectedBlob.contentType, selectedBlob.name) ? (
+                <video 
+                  src={previewUrl}
+                  controls
+                  className="w-full h-auto max-h-64"
+                />
+              ) : previewUrl && isAudioPreviewable(selectedBlob.contentType, selectedBlob.name) ? (
+                <div className="p-4">
+                  <audio src={previewUrl} controls className="w-full" />
+                </div>
+              ) : previewContent ? (
+                <pre className="p-4 text-xs overflow-auto max-h-64 whitespace-pre-wrap break-words font-mono">
+                  {previewContent.substring(0, 5000)}
+                  {previewContent.length > 5000 && '\n\n... (truncated)'}
+                </pre>
+              ) : (
+                <div className="p-8 text-center">
+                  <div className="text-sm font-bold text-gray-500 uppercase">
+                    {getFileTypeInfo(selectedBlob.contentType, selectedBlob.name).label}
+                  </div>
+                  <div className="text-xs text-gray-400 mt-2">No preview available</div>
+                </div>
+              )}
+            </div>
+            
+            {/* File Name */}
+            <h4 className="font-bold text-lg text-black mb-4 break-words">{selectedBlob.name}</h4>
+            
+            {/* User Association */}
+            {selectedBlob.matchedUser && (
+              <div className="mb-6 p-4 bg-gray-50 rounded-xl border-2 border-black">
+                <div className="text-xs font-bold text-gray-500 uppercase mb-2">Assigned To</div>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-black text-white flex items-center justify-center font-bold">
+                    {(selectedBlob.matchedUser.name || selectedBlob.matchedUser.email || '?').charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <div className="font-bold text-black">
+                      {selectedBlob.matchedUser.name || 'Unknown'}
+                    </div>
+                    {selectedBlob.matchedUser.email && (
+                      <div className="text-sm text-gray-500">{selectedBlob.matchedUser.email}</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* File Properties */}
+            <div className="space-y-3">
+              <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="text-xs font-bold text-gray-500 uppercase mb-1">Size</div>
+                <div className="font-medium text-black">{formatSize(selectedBlob.size)}</div>
+              </div>
+              
+              <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="text-xs font-bold text-gray-500 uppercase mb-1">Type</div>
+                <div className="font-medium text-black text-sm break-all">{selectedBlob.contentType}</div>
+              </div>
+              
+              <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="text-xs font-bold text-gray-500 uppercase mb-1">Modified</div>
+                <div className="font-medium text-black text-sm">
+                  {new Date(selectedBlob.lastModified).toLocaleString()}
+                </div>
+              </div>
+              
+              <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="text-xs font-bold text-gray-500 uppercase mb-1">Path</div>
+                <div className="font-medium text-black text-sm break-all">{selectedBlob.fullPath}</div>
+              </div>
+            </div>
+            
+            {/* Actions */}
+            <div className="mt-6 space-y-3">
+              <button
+                onClick={() => handleDownload(selectedBlob)}
+                className="w-full px-4 py-3 bg-black text-white font-bold rounded-xl hover:bg-gray-800 transition-colors"
+              >
+                Download
+              </button>
+              <button
+                onClick={() => setShowDeleteModal(selectedBlob)}
+                className="w-full px-4 py-3 border-2 border-black text-black font-bold rounded-xl hover:bg-gray-100 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upload Modal */}
+      {showUploadModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white border-4 border-black rounded-2xl shadow-2xl max-w-lg w-full p-6 lg:p-8">
+            <h3 className="text-2xl font-bold text-black mb-6">Upload Files</h3>
+            
+            <div
+              className="border-4 border-dashed border-gray-300 rounded-2xl p-8 lg:p-12 text-center hover:border-black transition-colors cursor-pointer mb-6"
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.currentTarget.classList.add('border-black', 'bg-gray-50');
+              }}
+              onDragLeave={(e) => {
+                e.preventDefault();
+                e.currentTarget.classList.remove('border-black', 'bg-gray-50');
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.currentTarget.classList.remove('border-black', 'bg-gray-50');
+                handleUpload(e.dataTransfer.files);
+              }}
+            >
+              <p className="font-bold text-lg text-black mb-2">Drop files here or click to browse</p>
+              <p className="text-sm text-gray-500">
+                Uploading to: {selectedContainer}/{currentPath || '(root)'}
+              </p>
+            </div>
+            
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(e) => handleUpload(e.target.files)}
+            />
+            
+            <div className="flex gap-4">
+              <button
+                onClick={() => setShowUploadModal(false)}
+                disabled={uploading}
+                className="flex-1 px-6 py-3 border-2 border-black text-black bg-white font-bold rounded-xl hover:bg-gray-100 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
+            
+            {uploading && (
+              <div className="mt-6 flex items-center justify-center gap-3">
+                <div className="w-6 h-6 border-3 border-black border-t-transparent rounded-full animate-spin"></div>
+                <span className="font-bold">Uploading...</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white border-4 border-black rounded-2xl shadow-2xl max-w-md w-full p-6 lg:p-8">
+            <div className="mb-6">
+              <h3 className="text-2xl font-bold text-black mb-3">Delete File</h3>
+              <p className="text-gray-700">
+                Are you sure you want to delete <strong>{showDeleteModal.name}</strong>? This action cannot be undone.
+              </p>
+            </div>
+            
+            <div className="flex gap-4">
+              <button
+                onClick={handleDelete}
+                className="flex-1 px-6 py-3 bg-black text-white font-bold rounded-xl hover:bg-gray-800 transition-colors"
+              >
+                Yes, Delete
+              </button>
+              <button
+                onClick={() => setShowDeleteModal(null)}
+                className="flex-1 px-6 py-3 border-2 border-black text-black bg-white font-bold rounded-xl hover:bg-gray-100 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
