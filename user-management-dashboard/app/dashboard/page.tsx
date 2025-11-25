@@ -324,16 +324,14 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="border-b-4 border-black bg-white sticky top-0 z-10 shadow-sm">
         <div className="px-8 py-6 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <Image
+          <Image
               src="/SafeGenerations-logo.png"
               alt="SafeGenerations logo"
               width={210}
               height={108}
               priority
+              className="grayscale"
             />
-            <h1 className="text-3xl font-bold text-black">SafeGenerations User Management</h1>
-          </div>
           <div className="flex gap-4 items-center">
             <button
               onClick={() => router.push('/storage')}
