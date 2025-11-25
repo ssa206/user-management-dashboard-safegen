@@ -1264,29 +1264,68 @@ export default function StoragePage() {
 
       {/* JSON Tree Viewer Modal */}
       {showJsonViewer && jsonData && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white border-4 border-black rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
-            <div className="p-4 border-b-4 border-black flex justify-between items-center flex-shrink-0">
-              <h3 className="text-xl font-bold text-black">JSON Tree View</h3>
-              <button
-                onClick={() => setShowJsonViewer(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors font-bold border-2 border-black"
-              >
-                X
-              </button>
-            </div>
-            <div className="flex-1 overflow-auto p-6">
-              <JsonTreeView data={jsonData} />
-            </div>
-          </div>
-        </div>
+        <JsonViewerModal 
+          data={jsonData} 
+          fileName={selectedBlob?.name || 'data.json'}
+          onClose={() => setShowJsonViewer(false)} 
+        />
       )}
     </div>
   );
 }
 
+// JSON Viewer Modal with Tree and Graph views
+function JsonViewerModal({ data, fileName, onClose }: { data: any; fileName: string; onClose: () => void }) {
+  const [viewMode, setViewMode] = useState<'tree' | 'graph'>('tree');
+  
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 lg:p-4">
+      <div className="bg-white border-4 border-black rounded-2xl shadow-2xl w-full h-full lg:w-[95vw] lg:h-[95vh] flex flex-col">
+        <div className="p-4 border-b-4 border-black flex justify-between items-center flex-shrink-0">
+          <div className="flex items-center gap-4">
+            <h3 className="text-xl font-bold text-black">{fileName}</h3>
+            <div className="flex border-2 border-black rounded-lg overflow-hidden">
+              <button
+                onClick={() => setViewMode('tree')}
+                className={`px-4 py-1 font-bold text-sm transition-colors ${
+                  viewMode === 'tree' ? 'bg-black text-white' : 'bg-white text-black hover:bg-gray-100'
+                }`}
+              >
+                Tree
+              </button>
+              <button
+                onClick={() => setViewMode('graph')}
+                className={`px-4 py-1 font-bold text-sm transition-colors ${
+                  viewMode === 'graph' ? 'bg-black text-white' : 'bg-white text-black hover:bg-gray-100'
+                }`}
+              >
+                Graph
+              </button>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors font-bold border-2 border-black"
+          >
+            X
+          </button>
+        </div>
+        <div className="flex-1 overflow-hidden">
+          {viewMode === 'tree' ? (
+            <div className="h-full overflow-auto p-6">
+              <JsonTreeView data={data} />
+            </div>
+          ) : (
+            <JsonGraphView data={data} />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // JSON Tree View Component
-function JsonTreeView({ data, level = 0 }: { data: any; level?: number }) {
+function JsonTreeView({ data }: { data: any }) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   
   const toggleCollapse = (key: string) => {
@@ -1316,7 +1355,6 @@ function JsonTreeView({ data, level = 0 }: { data: any; level?: number }) {
     }
     
     if (typeof value === 'string') {
-      // Check if it's a date string
       if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)) {
         return (
           <span className="text-purple-600">
@@ -1327,7 +1365,6 @@ function JsonTreeView({ data, level = 0 }: { data: any; level?: number }) {
           </span>
         );
       }
-      // Check if it's a URL
       if (value.startsWith('http://') || value.startsWith('https://')) {
         return (
           <a href={value} target="_blank" rel="noopener noreferrer" className="text-green-600 underline hover:text-green-800">
@@ -1399,6 +1436,386 @@ function JsonTreeView({ data, level = 0 }: { data: any; level?: number }) {
   return (
     <div className="font-mono text-sm">
       {renderValue(data, 'root', '')}
+    </div>
+  );
+}
+
+// JSON Graph/Mindmap View Component
+interface GraphNode {
+  id: string;
+  label: string;
+  type: 'object' | 'array' | 'string' | 'number' | 'boolean' | 'null';
+  value?: string;
+  x: number;
+  y: number;
+  children: string[];
+  parent?: string;
+}
+
+function JsonGraphView({ data }: { data: any }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [nodes, setNodes] = useState<Map<string, GraphNode>>(new Map());
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set(['root']));
+  const [selectedNode, setSelectedNode] = useState<string | null>(null);
+
+  // Build graph nodes from JSON data
+  useEffect(() => {
+    const nodeMap = new Map<string, GraphNode>();
+    
+    const processValue = (value: any, key: string, path: string, depth: number, index: number, siblingCount: number): string => {
+      const id = path || 'root';
+      
+      let type: GraphNode['type'] = 'null';
+      let displayValue: string | undefined;
+      let children: string[] = [];
+      
+      if (value === null) {
+        type = 'null';
+        displayValue = 'null';
+      } else if (typeof value === 'boolean') {
+        type = 'boolean';
+        displayValue = String(value);
+      } else if (typeof value === 'number') {
+        type = 'number';
+        displayValue = String(value);
+      } else if (typeof value === 'string') {
+        type = 'string';
+        displayValue = value.length > 20 ? value.substring(0, 20) + '...' : value;
+      } else if (Array.isArray(value)) {
+        type = 'array';
+        displayValue = `[${value.length}]`;
+        children = value.map((item, i) => processValue(item, `[${i}]`, `${id}.[${i}]`, depth + 1, i, value.length));
+      } else if (typeof value === 'object') {
+        type = 'object';
+        const keys = Object.keys(value);
+        displayValue = `{${keys.length}}`;
+        children = keys.map((k, i) => processValue(value[k], k, `${id}.${k}`, depth + 1, i, keys.length));
+      }
+      
+      nodeMap.set(id, {
+        id,
+        label: key,
+        type,
+        value: displayValue,
+        x: 0,
+        y: 0,
+        children,
+        parent: path ? path.split('.').slice(0, -1).join('.') || 'root' : undefined,
+      });
+      
+      return id;
+    };
+    
+    processValue(data, 'root', '', 0, 0, 1);
+    setNodes(nodeMap);
+  }, [data]);
+
+  // Calculate positions based on expanded state
+  const getVisibleNodes = (): GraphNode[] => {
+    const visible: GraphNode[] = [];
+    
+    const HORIZONTAL_SPACING = 320; // Space between levels
+    const VERTICAL_SPACING = 80; // Space between sibling nodes
+    const NODE_HEIGHT = 50;
+    
+    const layoutNode = (nodeId: string, level: number, startY: number): { endY: number } => {
+      const node = nodes.get(nodeId);
+      if (!node) return { endY: startY };
+      
+      const x = level * HORIZONTAL_SPACING + 50;
+      
+      if (expandedNodes.has(nodeId) && node.children.length > 0) {
+        // Layout children first to calculate this node's Y position
+        let currentY = startY;
+        const childPositions: number[] = [];
+        
+        for (const childId of node.children) {
+          const result = layoutNode(childId, level + 1, currentY);
+          const childNode = visible.find(n => n.id === childId);
+          if (childNode) {
+            childPositions.push(childNode.y);
+          }
+          currentY = result.endY + VERTICAL_SPACING;
+        }
+        
+        // Position this node in the middle of its children
+        const minChildY = Math.min(...childPositions);
+        const maxChildY = Math.max(...childPositions);
+        const y = childPositions.length > 0 ? (minChildY + maxChildY) / 2 : startY;
+        
+        visible.push({ ...node, x, y });
+        return { endY: currentY - VERTICAL_SPACING };
+      } else {
+        // Leaf node or collapsed
+        visible.push({ ...node, x, y: startY });
+        return { endY: startY + NODE_HEIGHT };
+      }
+    };
+    
+    if (nodes.has('root')) {
+      layoutNode('root', 0, 50);
+    }
+    
+    return visible;
+  };
+
+  const visibleNodes = getVisibleNodes();
+
+  const toggleExpand = (nodeId: string) => {
+    const newExpanded = new Set(expandedNodes);
+    if (newExpanded.has(nodeId)) {
+      newExpanded.delete(nodeId);
+    } else {
+      newExpanded.add(nodeId);
+    }
+    setExpandedNodes(newExpanded);
+  };
+
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    const delta = e.deltaY * -0.001;
+    setZoom(z => Math.min(Math.max(0.3, z + delta), 2));
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.target === containerRef.current || (e.target as HTMLElement).tagName === 'svg') {
+      setIsDragging(true);
+      setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isDragging) {
+      setPan({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const getNodeColor = (type: GraphNode['type']): string => {
+    switch (type) {
+      case 'object': return '#000000';
+      case 'array': return '#4B5563';
+      case 'string': return '#059669';
+      case 'number': return '#2563EB';
+      case 'boolean': return '#EA580C';
+      case 'null': return '#9CA3AF';
+      default: return '#6B7280';
+    }
+  };
+
+  const resetView = () => {
+    setPan({ x: 0, y: 0 });
+    setZoom(1);
+  };
+
+  const expandAll = () => {
+    const allIds = new Set<string>();
+    nodes.forEach((_, id) => allIds.add(id));
+    setExpandedNodes(allIds);
+  };
+
+  const collapseAll = () => {
+    setExpandedNodes(new Set(['root']));
+  };
+
+  // Calculate SVG dimensions
+  const maxX = Math.max(...visibleNodes.map(n => n.x), 800) + 400;
+  const maxY = Math.max(...visibleNodes.map(n => n.y), 400) + 200;
+
+  return (
+    <div className="h-full flex flex-col" style={{ minHeight: '500px' }}>
+      {/* Controls */}
+      <div className="p-3 border-b border-gray-200 flex gap-2 flex-wrap flex-shrink-0 bg-gray-50">
+        <button onClick={resetView} className="px-3 py-1 border-2 border-black rounded-lg text-sm font-bold hover:bg-gray-100">
+          Reset View
+        </button>
+        <button onClick={expandAll} className="px-3 py-1 border-2 border-black rounded-lg text-sm font-bold hover:bg-gray-100">
+          Expand All
+        </button>
+        <button onClick={collapseAll} className="px-3 py-1 border-2 border-black rounded-lg text-sm font-bold hover:bg-gray-100">
+          Collapse All
+        </button>
+        <span className="ml-auto text-sm text-gray-500 self-center">
+          Zoom: {Math.round(zoom * 100)}% | Drag to pan, scroll to zoom
+        </span>
+      </div>
+      
+      {/* Graph Area */}
+      <div 
+        ref={containerRef}
+        className="flex-1 overflow-hidden bg-gray-100 cursor-grab"
+        style={{ cursor: isDragging ? 'grabbing' : 'grab', minHeight: '400px' }}
+        onWheel={handleWheel}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+      >
+        <svg
+          width={maxX}
+          height={maxY}
+          style={{
+            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+            transformOrigin: '0 0',
+            minWidth: '100%',
+            minHeight: '100%',
+          }}
+        >
+          {/* Draw connection lines */}
+          {visibleNodes.map(node => {
+            if (!expandedNodes.has(node.id)) return null;
+            const children = node.children
+              .map(childId => visibleNodes.find(n => n.id === childId))
+              .filter(Boolean) as GraphNode[];
+            
+            return children.map(child => (
+              <path
+                key={`${node.id}-${child.id}`}
+                d={`M ${node.x + 240} ${node.y + 25} 
+                    C ${node.x + 280} ${node.y + 25}, 
+                      ${child.x - 40} ${child.y + 25}, 
+                      ${child.x} ${child.y + 25}`}
+                stroke="#94A3B8"
+                strokeWidth="2"
+                fill="none"
+              />
+            ));
+          })}
+          
+          {/* Draw nodes */}
+          {visibleNodes.map(node => {
+            const hasChildren = node.children.length > 0;
+            const isExpanded = expandedNodes.has(node.id);
+            const isSelected = selectedNode === node.id;
+            
+            return (
+              <g key={node.id} transform={`translate(${node.x}, ${node.y})`}>
+                {/* Node shadow */}
+                <rect
+                  x="3"
+                  y="3"
+                  width="240"
+                  height="50"
+                  rx="10"
+                  fill="#E5E7EB"
+                />
+                
+                {/* Node background */}
+                <rect
+                  x="0"
+                  y="0"
+                  width="240"
+                  height="50"
+                  rx="10"
+                  fill="white"
+                  stroke={isSelected ? '#000' : getNodeColor(node.type)}
+                  strokeWidth={isSelected ? 3 : 2}
+                  className="cursor-pointer"
+                  onClick={() => {
+                    setSelectedNode(node.id);
+                    if (hasChildren) toggleExpand(node.id);
+                  }}
+                />
+                
+                {/* Expand/collapse indicator */}
+                {hasChildren && (
+                  <g transform="translate(10, 15)">
+                    <rect
+                      x="0"
+                      y="0"
+                      width="20"
+                      height="20"
+                      rx="4"
+                      fill={getNodeColor(node.type)}
+                      className="cursor-pointer"
+                      onClick={() => toggleExpand(node.id)}
+                    />
+                    <text
+                      x="10"
+                      y="15"
+                      textAnchor="middle"
+                      fill="white"
+                      fontSize="14"
+                      fontWeight="bold"
+                      className="pointer-events-none"
+                    >
+                      {isExpanded ? '-' : '+'}
+                    </text>
+                  </g>
+                )}
+                
+                {/* Node label */}
+                <text
+                  x={hasChildren ? 40 : 12}
+                  y="20"
+                  fontSize="13"
+                  fontWeight="bold"
+                  fill="#1F2937"
+                  className="pointer-events-none"
+                >
+                  {node.label.length > 18 ? node.label.substring(0, 18) + '...' : node.label}
+                </text>
+                
+                {/* Node value */}
+                <text
+                  x={hasChildren ? 40 : 12}
+                  y="38"
+                  fontSize="12"
+                  fill={getNodeColor(node.type)}
+                  className="pointer-events-none"
+                >
+                  {node.value && node.value.length > 22 ? node.value.substring(0, 22) + '...' : node.value}
+                </text>
+                
+                {/* Type badge */}
+                <rect
+                  x="185"
+                  y="12"
+                  width="45"
+                  height="24"
+                  rx="5"
+                  fill={getNodeColor(node.type)}
+                />
+                <text
+                  x="207"
+                  y="29"
+                  textAnchor="middle"
+                  fontSize="10"
+                  fill="white"
+                  fontWeight="bold"
+                  className="pointer-events-none"
+                >
+                  {node.type.substring(0, 3).toUpperCase()}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+      
+      {/* Selected Node Details */}
+      {selectedNode && nodes.get(selectedNode) && (
+        <div className="p-3 border-t-2 border-black bg-white flex-shrink-0">
+          <div className="flex gap-4 text-sm">
+            <div>
+              <span className="font-bold">Path:</span> {selectedNode}
+            </div>
+            <div>
+              <span className="font-bold">Type:</span> {nodes.get(selectedNode)?.type}
+            </div>
+            <div>
+              <span className="font-bold">Value:</span> {nodes.get(selectedNode)?.value}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
